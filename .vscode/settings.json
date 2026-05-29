@@ -8,6 +8,7 @@
     "esac",
     "flyctl",
     "healthcheck",
+    "hono",
     "moviefinder",
     "superfly",
     "TMDB"
