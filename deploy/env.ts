@@ -3,7 +3,9 @@ import { REQUIRED_DEPLOY_ENV, RUNTIME_SECRETS } from './config'
 export function requireEnv(name: string): string {
   const value = process.env[name]
   if (!value) {
-    throw new Error(`Missing required environment variable: ${name} (provide it via Doppler)`)
+    throw new Error(
+      `Missing required environment variable: ${name} (provide it via Doppler)`,
+    )
   }
   return value
 }
@@ -13,7 +15,7 @@ export function validateDeployEnv(): void {
   const missing = REQUIRED_DEPLOY_ENV.filter((name) => !process.env[name])
   if (missing.length > 0) {
     throw new Error(
-      `Missing required deploy env vars: ${missing.join(', ')}. Run via \`doppler run\`.`
+      `Missing required deploy env vars: ${missing.join(', ')}. Run via \`doppler run\`.`,
     )
   }
 }

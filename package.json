@@ -15,17 +15,22 @@
     "deploy:plan": "doppler run -- bun run deploy/deploy.ts --plan",
     "deploy:fly": "doppler run -- bun run deploy/deploy.ts --only=fly",
     "deploy:dns": "doppler run -- bun run deploy/deploy.ts --only=cloudflare",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "lint:filenames": "bun scripts/check-kebab-case.ts",
-    "lint": "bun run lint:filenames && bun run tc",
+    "lint": "bun run format:check && bun run lint:filenames && bun run tc",
     "tc": "bunx tsc --noEmit",
     "gh": "open https://github.com/crvouga/moviefinder.app-hono.git"
   },
   "dependencies": {
-    "hono": "^4"
+    "better-auth": "^1.6.11",
+    "hono": "^4",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4",
     "bun-types": "latest",
+    "prettier": "^3.8.3",
     "tailwindcss": "^4"
   }
 }

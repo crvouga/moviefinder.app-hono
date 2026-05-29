@@ -2,11 +2,18 @@ import { Hono } from 'hono'
 import { DetailPage } from './detail-page'
 import { getMediaById } from './queries'
 import { fetchDetailAndIngest } from '../tmdb/ingest'
+import type { AppEnv } from '../auth/types'
 
-export const detailRoute = new Hono()
+export const detailRoute = new Hono<AppEnv>()
 
-function isMinimal(media: { runtime: number | null; seasons: number | null; status: string | null }) {
-  return media.runtime === null && media.seasons === null && media.status === null
+function isMinimal(media: {
+  runtime: number | null
+  seasons: number | null
+  status: string | null
+}) {
+  return (
+    media.runtime === null && media.seasons === null && media.status === null
+  )
 }
 
 detailRoute.get('/media/:id', async (c) => {
@@ -26,5 +33,5 @@ detailRoute.get('/media/:id', async (c) => {
     }
   }
 
-  return c.html(<DetailPage media={media} />)
+  return c.html(<DetailPage media={media} user={c.get('user')} />)
 })

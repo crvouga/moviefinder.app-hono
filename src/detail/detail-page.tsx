@@ -1,4 +1,5 @@
 import { Layout } from '../components/layout'
+import type { NavUser } from '../components/layout'
 import type { MediaItem } from '../types'
 
 function runtimeLabel(m: MediaItem): string | null {
@@ -10,18 +11,29 @@ function runtimeLabel(m: MediaItem): string | null {
   return null
 }
 
-export const DetailPage = ({ media }: { media: MediaItem }) => {
+export const DetailPage = ({
+  media,
+  user,
+}: {
+  media: MediaItem
+  user?: NavUser
+}) => {
   const meta = [
     media.media_type === 'tv' ? 'TV Series' : 'Film',
     media.year ? String(media.year) : null,
     runtimeLabel(media),
     media.status,
-    media.rating ? `★ ${media.rating.toFixed(1)} (${media.vote_count ?? 0})` : null,
+    media.rating
+      ? `★ ${media.rating.toFixed(1)} (${media.vote_count ?? 0})`
+      : null,
   ].filter(Boolean)
 
   return (
-    <Layout title={media.title}>
-      <a href="/" class="text-sm text-neutral-400 hover:text-neutral-100 transition-colors">
+    <Layout title={media.title} user={user}>
+      <a
+        href="/"
+        class="text-sm text-neutral-400 hover:text-neutral-100 transition-colors"
+      >
         ← Back to search
       </a>
       <div class="mt-6 flex flex-col sm:flex-row gap-6">
@@ -37,7 +49,11 @@ export const DetailPage = ({ media }: { media: MediaItem }) => {
         <div>
           <h1 class="text-3xl font-semibold tracking-tight">{media.title}</h1>
           <p class="mt-2 text-neutral-400">{meta.join(' · ')}</p>
-          {media.overview && <p class="mt-4 leading-relaxed text-neutral-200">{media.overview}</p>}
+          {media.overview && (
+            <p class="mt-4 leading-relaxed text-neutral-200">
+              {media.overview}
+            </p>
+          )}
         </div>
       </div>
     </Layout>

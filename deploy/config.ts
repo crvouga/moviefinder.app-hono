@@ -43,6 +43,8 @@ export const RUNTIME_SECRETS = [
   'TWILIO_ACCOUNT_SID',
   'TWILIO_AUTH_TOKEN',
   'TWILIO_SERVICE_SID',
+  'BETTER_AUTH_SECRET',
+  'BETTER_AUTH_URL',
 ] as const
 
 /** Env vars required by the deploy tooling itself (validated up front). */

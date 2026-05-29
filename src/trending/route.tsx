@@ -2,8 +2,9 @@ import { Hono } from 'hono'
 import { TrendingPage } from './trending-page'
 import { getTrending } from './queries'
 import { fetchTrendingAndIngest } from '../tmdb/ingest'
+import type { AppEnv } from '../auth/types'
 
-export const trendingRoute = new Hono()
+export const trendingRoute = new Hono<AppEnv>()
 
 trendingRoute.get('/trending', async (c) => {
   try {
@@ -12,5 +13,5 @@ trendingRoute.get('/trending', async (c) => {
     console.error('fetchTrendingAndIngest failed', err)
   }
 
-  return c.html(<TrendingPage items={getTrending()} />)
+  return c.html(<TrendingPage items={getTrending()} user={c.get('user')} />)
 })

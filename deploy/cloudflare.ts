@@ -1,9 +1,4 @@
-import {
-  APEX_PLACEHOLDER_IP,
-  WWW_HOST,
-  WWW_PROXIED,
-  ZONE,
-} from './config'
+import { APEX_PLACEHOLDER_IP, WWW_HOST, WWW_PROXIED, ZONE } from './config'
 import { requireEnv } from './env'
 import { isDryRun, log } from './shell'
 
@@ -52,7 +47,9 @@ async function cf<T>(path: string, init?: RequestInit): Promise<T> {
   })
   const body = (await res.json()) as CfResponse<T>
   if (!res.ok || !body.success) {
-    const detail = body.errors?.map((e) => `${e.code} ${e.message}`).join('; ') ?? res.statusText
+    const detail =
+      body.errors?.map((e) => `${e.code} ${e.message}`).join('; ') ??
+      res.statusText
     throw new Error(`Cloudflare API ${path} failed: ${detail}`)
   }
   return body.result
@@ -63,11 +60,13 @@ let cachedZoneId: string | null = null
 export async function getZoneId(): Promise<string> {
   if (cachedZoneId) return cachedZoneId
   const zones = await cf<{ id: string; name: string }[]>(
-    `/zones?name=${encodeURIComponent(ZONE)}`
+    `/zones?name=${encodeURIComponent(ZONE)}`,
   )
   const zone = zones.find((z) => z.name === ZONE)
   if (!zone) {
-    throw new Error(`Cloudflare zone not found for ${ZONE} (is the domain on this account?)`)
+    throw new Error(
+      `Cloudflare zone not found for ${ZONE} (is the domain on this account?)`,
+    )
   }
   cachedZoneId = zone.id
   log(STEP, `zone ${ZONE} -> ${zone.id}`)
@@ -84,7 +83,7 @@ export interface DnsRecordInput {
 export async function upsertDnsRecord(record: DnsRecordInput): Promise<void> {
   const zoneId = await getZoneId()
   const existing = await cf<DnsRecord[]>(
-    `/zones/${zoneId}/dns_records?type=${record.type}&name=${encodeURIComponent(record.name)}`
+    `/zones/${zoneId}/dns_records?type=${record.type}&name=${encodeURIComponent(record.name)}`,
   )
 
   const payload = {
@@ -97,7 +96,10 @@ export async function upsertDnsRecord(record: DnsRecordInput): Promise<void> {
 
   const current = existing[0]
   const verb = current ? 'update' : 'create'
-  log(STEP, `${verb} DNS ${record.type} ${record.name} -> ${record.content} (proxied=${payload.proxied})`)
+  log(
+    STEP,
+    `${verb} DNS ${record.type} ${record.name} -> ${record.content} (proxied=${payload.proxied})`,
+  )
   if (isDryRun()) {
     log(STEP, '(dry-run: skipped)')
     return
@@ -118,7 +120,9 @@ export async function upsertDnsRecord(record: DnsRecordInput): Promise<void> {
 
 async function getRedirectEntrypoint(zoneId: string): Promise<Ruleset | null> {
   try {
-    return await cf<Ruleset>(`/zones/${zoneId}/rulesets/phases/${REDIRECT_PHASE}/entrypoint`)
+    return await cf<Ruleset>(
+      `/zones/${zoneId}/rulesets/phases/${REDIRECT_PHASE}/entrypoint`,
+    )
   } catch {
     return null
   }
@@ -145,14 +149,19 @@ export async function upsertRedirectRule(): Promise<void> {
   }
 
   const entrypoint = await getRedirectEntrypoint(zoneId)
-  log(STEP, `${entrypoint ? 'update' : 'create'} ${REDIRECT_PHASE} ruleset (apex -> www)`)
+  log(
+    STEP,
+    `${entrypoint ? 'update' : 'create'} ${REDIRECT_PHASE} ruleset (apex -> www)`,
+  )
   if (isDryRun()) {
     log(STEP, '(dry-run: skipped)')
     return
   }
 
   if (entrypoint) {
-    const others = (entrypoint.rules ?? []).filter((r) => r.ref !== REDIRECT_REF)
+    const others = (entrypoint.rules ?? []).filter(
+      (r) => r.ref !== REDIRECT_REF,
+    )
     await cf(`/zones/${zoneId}/rulesets/phases/${REDIRECT_PHASE}/entrypoint`, {
       method: 'PUT',
       body: JSON.stringify({ rules: [...others, rule] }),
@@ -173,17 +182,27 @@ export async function upsertRedirectRule(): Promise<void> {
 /** Configure all DNS records for the deployment. */
 export async function configureDns(
   ipv6: string | null,
-  cert: { name?: string; value?: string; type?: 'CNAME' | 'TXT' }
+  cert: { name?: string; value?: string; type?: 'CNAME' | 'TXT' },
 ): Promise<void> {
   if (ipv6) {
-    await upsertDnsRecord({ type: 'AAAA', name: WWW_HOST, content: ipv6, proxied: WWW_PROXIED })
+    await upsertDnsRecord({
+      type: 'AAAA',
+      name: WWW_HOST,
+      content: ipv6,
+      proxied: WWW_PROXIED,
+    })
   } else {
     log(STEP, 'no IPv6 available; skipping www AAAA record')
   }
 
   // Apex must be proxied for the redirect rule to run; traffic is intercepted
   // by the rule before reaching the placeholder address.
-  await upsertDnsRecord({ type: 'A', name: ZONE, content: APEX_PLACEHOLDER_IP, proxied: true })
+  await upsertDnsRecord({
+    type: 'A',
+    name: ZONE,
+    content: APEX_PLACEHOLDER_IP,
+    proxied: true,
+  })
 
   if (cert.name && cert.value) {
     // Validation records must be DNS-only so the raw value is returned.

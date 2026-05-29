@@ -1,11 +1,22 @@
 import { Layout } from '../components/layout'
+import type { NavUser } from '../components/layout'
 import type { MediaItem } from '../types'
 
-export const TrendingPage = ({ items }: { items: MediaItem[] }) => (
-  <Layout title="Trending — MediaFinder">
-    <h1 class="text-3xl font-semibold tracking-tight mb-6">Trending this week</h1>
+export const TrendingPage = ({
+  items,
+  user,
+}: {
+  items: MediaItem[]
+  user?: NavUser
+}) => (
+  <Layout title="Trending — MediaFinder" user={user}>
+    <h1 class="text-3xl font-semibold tracking-tight mb-6">
+      Trending this week
+    </h1>
     {items.length === 0 ? (
-      <p class="text-neutral-400">No trending titles yet. Set TMDB_API_READ_ACCESS_TOKEN and reload.</p>
+      <p class="text-neutral-400">
+        No trending titles yet. Set TMDB_API_READ_ACCESS_TOKEN and reload.
+      </p>
     ) : (
       <ul class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
         {items.map((m) => (

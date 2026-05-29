@@ -6,14 +6,16 @@ function upsertEntity(
   namespace: string,
   entityType: string,
   entityId: string,
-  data: unknown
+  data: unknown,
 ) {
-  db.query(`
+  db.query(
+    `
     INSERT INTO entities (namespace, entity_type, entity_id, data)
     VALUES (?, ?, ?, ?)
     ON CONFLICT(namespace, entity_type, entity_id)
     DO UPDATE SET data = excluded.data, fetched_at = CURRENT_TIMESTAMP
-  `).run(namespace, entityType, entityId, JSON.stringify(data))
+  `,
+  ).run(namespace, entityType, entityId, JSON.stringify(data))
 }
 
 interface MultiResult {
@@ -29,7 +31,10 @@ export async function searchAndIngest(query: string) {
   }
 }
 
-export async function fetchDetailAndIngest(entityType: MediaType, tmdbId: string) {
+export async function fetchDetailAndIngest(
+  entityType: MediaType,
+  tmdbId: string,
+) {
   const json = await tmdbFetch(`/${entityType}/${tmdbId}`, {
     append_to_response: 'credits',
   })

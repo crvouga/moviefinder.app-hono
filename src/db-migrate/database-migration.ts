@@ -83,7 +83,7 @@ export class DatabaseMigration {
       `CREATE TABLE IF NOT EXISTS ${SNAPSHOT_TABLE} (
         table_name   TEXT PRIMARY KEY,
         columns_json TEXT NOT NULL
-      )`
+      )`,
     )
 
     for (const table of this.tableOrder) {
@@ -92,7 +92,9 @@ export class DatabaseMigration {
 
     for (const idx of this.indexes) {
       db.run(`DROP INDEX IF EXISTS ${idx.name}`)
-      db.run(`CREATE ${idx.unique ? 'UNIQUE ' : ''}INDEX ${idx.name} ON ${idx.target}`)
+      db.run(
+        `CREATE ${idx.unique ? 'UNIQUE ' : ''}INDEX ${idx.name} ON ${idx.target}`,
+      )
     }
 
     for (const v of this.views) {
@@ -103,7 +105,9 @@ export class DatabaseMigration {
 
   private reconcileTable(db: Database, table: string): void {
     const desired = this.columns.get(table) ?? []
-    const info = db.query(`PRAGMA table_info(${table})`).all() as { name: string }[]
+    const info = db.query(`PRAGMA table_info(${table})`).all() as {
+      name: string
+    }[]
     const exists = info.length > 0
 
     if (!exists) {
@@ -118,8 +122,12 @@ export class DatabaseMigration {
 
     const changed =
       snapshot !== null &&
-      (desired.some((c) => snapshot.has(c.name) && snapshot.get(c.name) !== c.definition) ||
-        [...snapshot.keys()].some((name) => !desired.some((c) => c.name === name)))
+      (desired.some(
+        (c) => snapshot.has(c.name) && snapshot.get(c.name) !== c.definition,
+      ) ||
+        [...snapshot.keys()].some(
+          (name) => !desired.some((c) => c.name === name),
+        ))
 
     if (changed) {
       this.rebuildTable(db, table, desired, actualNames)
@@ -143,11 +151,13 @@ export class DatabaseMigration {
     db: Database,
     table: string,
     desired: ColumnDef[],
-    actualNames: Set<string>
+    actualNames: Set<string>,
   ): void {
     const tmp = `${table}__migrate_tmp`
     const defs = desired.map((c) => `${c.name} ${c.definition}`).join(', ')
-    const shared = desired.filter((c) => actualNames.has(c.name)).map((c) => c.name)
+    const shared = desired
+      .filter((c) => actualNames.has(c.name))
+      .map((c) => c.name)
 
     db.run('PRAGMA foreign_keys = OFF')
     db.transaction(() => {
@@ -163,7 +173,10 @@ export class DatabaseMigration {
     db.run('PRAGMA foreign_keys = ON')
   }
 
-  private readSnapshot(db: Database, table: string): Map<string, string> | null {
+  private readSnapshot(
+    db: Database,
+    table: string,
+  ): Map<string, string> | null {
     const row = db
       .query(`SELECT columns_json FROM ${SNAPSHOT_TABLE} WHERE table_name = ?`)
       .get(table) as { columns_json: string } | null
@@ -172,12 +185,16 @@ export class DatabaseMigration {
     return new Map(parsed.map((c) => [c.name, c.definition]))
   }
 
-  private writeSnapshot(db: Database, table: string, desired: ColumnDef[]): void {
+  private writeSnapshot(
+    db: Database,
+    table: string,
+    desired: ColumnDef[],
+  ): void {
     db.run(
       `INSERT INTO ${SNAPSHOT_TABLE} (table_name, columns_json)
        VALUES (?, ?)
        ON CONFLICT(table_name) DO UPDATE SET columns_json = excluded.columns_json`,
-      [table, JSON.stringify(desired)]
+      [table, JSON.stringify(desired)],
     )
   }
 }

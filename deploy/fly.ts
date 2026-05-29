@@ -38,7 +38,9 @@ function flyCmd(...args: string[]): string[] {
 }
 
 export async function ensureApp(): Promise<void> {
-  const existing = await captureJson<{ Name?: string }[]>(flyCmd('apps', 'list', '--json'))
+  const existing = await captureJson<{ Name?: string }[]>(
+    flyCmd('apps', 'list', '--json'),
+  )
   const found = existing?.some((a) => a.Name === APP_NAME)
   if (found) {
     log(STEP, `app ${APP_NAME} already exists`)
@@ -49,7 +51,7 @@ export async function ensureApp(): Promise<void> {
 
 export async function ensureVolume(): Promise<void> {
   const volumes = await captureJson<{ name?: string }[]>(
-    flyCmd('volumes', 'list', ...flagApp(), '--json')
+    flyCmd('volumes', 'list', ...flagApp(), '--json'),
   )
   const found = volumes?.some((v) => v.name === FLY_VOLUME)
   if (found) {
@@ -67,8 +69,8 @@ export async function ensureVolume(): Promise<void> {
       '--size',
       String(FLY_VOLUME_SIZE_GB),
       '--yes',
-      ...flagApp()
-    )
+      ...flagApp(),
+    ),
   )
 }
 
@@ -76,7 +78,10 @@ export async function ensureVolume(): Promise<void> {
  * Re-push the GHCR image to Fly's registry (Fly cannot pull private GHCR
  * images directly). Returns the registry.fly.io reference to deploy.
  */
-export async function pushImageToFlyRegistry(ghcrRepository: string, tag: string): Promise<string> {
+export async function pushImageToFlyRegistry(
+  ghcrRepository: string,
+  tag: string,
+): Promise<string> {
   const ghcrImage = `ghcr.io/${ghcrRepository.toLowerCase()}:${tag}`
   const flyImage = `${FLY_IMAGE}:${tag}`
 
@@ -89,7 +94,9 @@ export async function pushImageToFlyRegistry(ghcrRepository: string, tag: string
 
 /** Stage runtime secrets so they apply on the next deploy. Fed via stdin so
  * values never appear in argv. */
-export async function setRuntimeSecrets(secrets: Record<string, string>): Promise<void> {
+export async function setRuntimeSecrets(
+  secrets: Record<string, string>,
+): Promise<void> {
   const names = Object.keys(secrets)
   if (names.length === 0) {
     log(STEP, 'no runtime secrets to set')
@@ -108,7 +115,10 @@ export async function setRuntimeSecrets(secrets: Record<string, string>): Promis
 /** Deploy a prebuilt image, or build from the Dockerfile when no image is given. */
 export async function deploy(flyImage: string | null): Promise<void> {
   if (flyImage) {
-    await run(STEP, flyCmd('deploy', '--image', flyImage, ...flagApp(), '--yes'))
+    await run(
+      STEP,
+      flyCmd('deploy', '--image', flyImage, ...flagApp(), '--yes'),
+    )
   } else {
     await run(STEP, flyCmd('deploy', '--remote-only', ...flagApp(), '--yes'))
   }
@@ -116,7 +126,9 @@ export async function deploy(flyImage: string | null): Promise<void> {
 
 /** Ensure the app has a dedicated public IPv6 and return it. */
 export async function ensureIpv6(): Promise<string | null> {
-  const ips = await captureJson<FlyIp[]>(flyCmd('ips', 'list', ...flagApp(), '--json'))
+  const ips = await captureJson<FlyIp[]>(
+    flyCmd('ips', 'list', ...flagApp(), '--json'),
+  )
   const existing = ips?.find((ip) => (ip.Type ?? ip.type) === 'v6')
   const existingAddr = existing?.Address ?? existing?.address
   if (existingAddr) {
@@ -127,14 +139,16 @@ export async function ensureIpv6(): Promise<string | null> {
   await run(STEP, flyCmd('ips', 'allocate-v6', ...flagApp()))
   if (isDryRun()) return null
 
-  const after = await captureJson<FlyIp[]>(flyCmd('ips', 'list', ...flagApp(), '--json'))
+  const after = await captureJson<FlyIp[]>(
+    flyCmd('ips', 'list', ...flagApp(), '--json'),
+  )
   const created = after?.find((ip) => (ip.Type ?? ip.type) === 'v6')
   return created?.Address ?? created?.address ?? null
 }
 
 export async function ensureCert(): Promise<void> {
   const certs = await captureJson<{ Hostname?: string; hostname?: string }[]>(
-    flyCmd('certs', 'list', ...flagApp(), '--json')
+    flyCmd('certs', 'list', ...flagApp(), '--json'),
   )
   const found = certs?.some((c) => (c.Hostname ?? c.hostname) === WWW_HOST)
   if (found) {
@@ -151,7 +165,7 @@ export async function ensureCert(): Promise<void> {
 export async function readCertDns(): Promise<CertDns> {
   if (isDryRun()) return {}
   const raw = await captureJson<Record<string, unknown>>(
-    flyCmd('certs', 'show', WWW_HOST, ...flagApp(), '--json')
+    flyCmd('certs', 'show', WWW_HOST, ...flagApp(), '--json'),
   )
   if (!raw) {
     log(STEP, `could not read cert details for ${WWW_HOST}`)
@@ -166,7 +180,11 @@ export async function readCertDns(): Promise<CertDns> {
     return undefined
   }
 
-  const name = get('DNSValidationHostname', 'dns_validation_hostname', 'DNSValidationInstructions')
+  const name = get(
+    'DNSValidationHostname',
+    'dns_validation_hostname',
+    'DNSValidationInstructions',
+  )
   const value = get('DNSValidationTarget', 'dns_validation_target')
   const type = value?.includes('.') && !value.includes(' ') ? 'CNAME' : 'TXT'
 

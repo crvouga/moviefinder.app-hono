@@ -13,7 +13,11 @@ function isKebabCase(name: string): boolean {
   return KEBAB.test(name)
 }
 
-function checkSegment(segment: string, kind: 'directory' | 'file', relPath: string): string | null {
+function checkSegment(
+  segment: string,
+  kind: 'directory' | 'file',
+  relPath: string,
+): string | null {
   if (!isKebabCase(segment)) {
     return `${relPath}: ${kind} "${segment}" must be lowercase kebab-case (a-z, 0-9, hyphens)`
   }

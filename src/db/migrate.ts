@@ -1,4 +1,5 @@
 import { DatabaseMigration } from '../db-migrate/database-migration'
+import { registerAuthSchema } from '../auth/schema'
 import { db } from './index'
 
 const MEDIA_VIEW_SELECT = `
@@ -43,10 +44,66 @@ export function migrate() {
   m.col('entities', 'fetched_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
 
   // Upsert conflict target (replaces the old table-level UNIQUE constraint).
-  m.index('idx_entities_unique', 'entities (namespace, entity_type, entity_id)', { unique: true })
+  m.index(
+    'idx_entities_unique',
+    'entities (namespace, entity_type, entity_id)',
+    { unique: true },
+  )
   m.index('idx_entities_lookup', 'entities (namespace, entity_type, entity_id)')
 
   m.view('media', MEDIA_VIEW_SELECT)
+
+  registerAuthSchema(m)
+
+  // --- Event store (collaborative lists) ---
+  m.table('events')
+  m.col('events', 'id', 'INTEGER PRIMARY KEY AUTOINCREMENT')
+  m.col('events', 'event_id', 'TEXT NOT NULL')
+  m.col('events', 'namespace', "TEXT NOT NULL DEFAULT 'media_list'")
+  m.col('events', 'aggregate_id', 'TEXT NOT NULL')
+  m.col('events', 'event_type', 'TEXT NOT NULL')
+  m.col('events', 'payload_json', 'TEXT NOT NULL')
+  m.col('events', 'actor_id', 'TEXT NOT NULL')
+  m.col('events', 'version', 'INTEGER NOT NULL')
+  m.col('events', 'created_at', 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP')
+
+  m.index('idx_events_event_id', 'events (event_id)', { unique: true })
+  m.index('idx_events_aggregate_version', 'events (aggregate_id, version)', {
+    unique: true,
+  })
+  m.index('idx_events_aggregate', 'events (aggregate_id, id)')
+
+  // --- Projections (read models folded from the event stream) ---
+  m.table('media_list')
+  m.col('media_list', 'list_id', 'TEXT PRIMARY KEY')
+  m.col('media_list', 'name', 'TEXT')
+  m.col('media_list', 'created_by', 'TEXT')
+  m.col('media_list', 'created_at', 'TIMESTAMP')
+  m.col('media_list', 'updated_at', 'TIMESTAMP')
+  m.col('media_list', 'deleted_at', 'TIMESTAMP')
+  m.col('media_list', 'item_count', 'INTEGER NOT NULL DEFAULT 0')
+
+  m.table('media_list_item')
+  m.col('media_list_item', 'list_id', 'TEXT NOT NULL')
+  m.col('media_list_item', 'media_id', 'INTEGER NOT NULL')
+  m.col('media_list_item', 'position', 'INTEGER NOT NULL')
+  m.col('media_list_item', 'added_by', 'TEXT')
+  m.col('media_list_item', 'added_at', 'TIMESTAMP')
+  m.index('idx_media_list_item_unique', 'media_list_item (list_id, media_id)', {
+    unique: true,
+  })
+  m.index('idx_media_list_item_order', 'media_list_item (list_id, position)')
+
+  m.table('media_list_member')
+  m.col('media_list_member', 'list_id', 'TEXT NOT NULL')
+  m.col('media_list_member', 'actor_id', 'TEXT NOT NULL')
+  m.col('media_list_member', 'role', 'TEXT NOT NULL')
+  m.col('media_list_member', 'joined_at', 'TIMESTAMP')
+  m.index(
+    'idx_media_list_member_unique',
+    'media_list_member (list_id, actor_id)',
+    { unique: true },
+  )
 
   m.run(db)
 }
