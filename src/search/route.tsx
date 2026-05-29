@@ -6,17 +6,16 @@ import type { AppEnv } from '../auth/types'
 
 export const searchRoute = new Hono<AppEnv>()
 
-searchRoute.get('/', (c) => c.html(<SearchPage user={c.get('user')} />))
-
-searchRoute.get('/api/search', async (c) => {
-  const q = c.req.query('q')?.trim()
-  if (!q) return c.json([])
-
-  try {
-    await searchAndIngest(q)
-  } catch (err) {
-    console.error('searchAndIngest failed', err)
+searchRoute.get('/', async (c) => {
+  const q = c.req.query('q')?.trim() ?? ''
+  let results: ReturnType<typeof searchMedia> = []
+  if (q) {
+    try {
+      await searchAndIngest(q)
+    } catch (err) {
+      console.error('searchAndIngest failed', err)
+    }
+    results = searchMedia(q)
   }
-
-  return c.json(searchMedia(q))
+  return c.html(<SearchPage query={q} results={results} user={c.get('user')} />)
 })
