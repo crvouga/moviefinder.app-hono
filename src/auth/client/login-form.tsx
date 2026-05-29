@@ -1,12 +1,8 @@
 import { useState } from 'hono/jsx/dom'
 import { authClient } from '../client'
+import { Button, TextInput, Field, Alert } from '../../components/ui'
 
 type Step = 'phone' | 'code'
-
-const inputClass =
-  'w-full px-4 py-3 rounded-xl bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-neutral-500 text-lg'
-const buttonClass =
-  'w-full px-4 py-3 rounded-xl bg-neutral-100 text-neutral-900 font-medium disabled:opacity-50 transition-opacity'
 
 export function LoginForm() {
   const [step, setStep] = useState<Step>('phone')
@@ -42,69 +38,78 @@ export function LoginForm() {
   }
 
   return (
-    <div class="max-w-sm">
+    <div class="flex flex-col gap-4">
       {step === 'phone' ? (
         <form onSubmit={sendCode} class="flex flex-col gap-4">
-          <label class="text-sm text-neutral-400" for="phone">
-            Enter your phone number (include country code, e.g. +15551234567)
-          </label>
-          <input
-            id="phone"
-            type="tel"
-            value={phoneNumber}
-            onInput={(e) =>
-              setPhoneNumber((e.target as HTMLInputElement).value)
-            }
-            placeholder="+15551234567"
-            class={inputClass}
-            autocomplete="tel"
-            required
-          />
-          <button
-            type="submit"
-            disabled={loading || !phoneNumber.trim()}
-            class={buttonClass}
+          <Field
+            label="Phone number"
+            htmlFor="phone"
+            hint="Include your country code, e.g. +15551234567"
           >
-            {loading ? 'Sending...' : 'Send code'}
-          </button>
+            <TextInput
+              id="phone"
+              type="tel"
+              value={phoneNumber}
+              onInput={(e) =>
+                setPhoneNumber((e.target as HTMLInputElement).value)
+              }
+              placeholder="+15551234567"
+              autocomplete="tel"
+              required
+            />
+          </Field>
+          <Button
+            type="submit"
+            variant="primary"
+            block
+            loading={loading}
+            disabled={!phoneNumber.trim()}
+          >
+            {loading ? 'Sending…' : 'Send code'}
+          </Button>
         </form>
       ) : (
         <form onSubmit={verifyCode} class="flex flex-col gap-4">
-          <label class="text-sm text-neutral-400" for="code">
-            Enter the code sent to {phoneNumber}
-          </label>
-          <input
-            id="code"
-            type="text"
-            inputmode="numeric"
-            value={code}
-            onInput={(e) => setCode((e.target as HTMLInputElement).value)}
-            placeholder="123456"
-            class={inputClass}
-            autocomplete="one-time-code"
-            required
-          />
-          <button
-            type="submit"
-            disabled={loading || !code.trim()}
-            class={buttonClass}
+          <Field
+            label="Verification code"
+            htmlFor="code"
+            hint={`Sent to ${phoneNumber}`}
           >
-            {loading ? 'Verifying...' : 'Verify'}
-          </button>
-          <button
+            <TextInput
+              id="code"
+              type="text"
+              inputmode="numeric"
+              value={code}
+              onInput={(e) => setCode((e.target as HTMLInputElement).value)}
+              placeholder="123456"
+              autocomplete="one-time-code"
+              required
+            />
+          </Field>
+          <Button
+            type="submit"
+            variant="primary"
+            block
+            loading={loading}
+            disabled={!code.trim()}
+          >
+            {loading ? 'Verifying…' : 'Verify'}
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={() => {
               setStep('phone')
               setCode('')
               setError(null)
             }}
-            class="text-sm text-neutral-400 hover:text-neutral-100 transition-colors"
           >
             Use a different number
-          </button>
+          </Button>
         </form>
       )}
-      {error && <p class="mt-4 text-sm text-red-400">{error}</p>}
+      {error ? <Alert variant="error">{error}</Alert> : null}
     </div>
   )
 }

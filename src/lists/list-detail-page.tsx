@@ -1,6 +1,7 @@
 import { Layout } from '../components/layout'
 import type { NavUser } from '../components/layout'
 import type { MediaList, MediaListItem, MediaListMember } from './queries'
+import { BackLink, Badge, MediaRow } from '../components/ui'
 
 export const ListDetailPage = ({
   list,
@@ -17,21 +18,24 @@ export const ListDetailPage = ({
   actorId: string
   user?: NavUser
 }) => (
-  <Layout title={`${list.name ?? 'List'} — MediaFinder`} user={user}>
-    <a
-      href="/lists"
-      class="text-sm text-neutral-400 hover:text-neutral-100 transition-colors"
-    >
-      ← All lists
-    </a>
+  <Layout title={`${list.name ?? 'List'} — MovieFinder`} user={user}>
+    <BackLink href="/lists">All lists</BackLink>
 
-    <h1 class="mt-4 text-3xl font-semibold tracking-tight">
-      {list.name ?? 'Untitled list'}
-    </h1>
-    <p class="mt-1 text-sm text-neutral-400">
-      {list.item_count} {list.item_count === 1 ? 'title' : 'titles'} ·{' '}
-      {members.length} {members.length === 1 ? 'member' : 'members'}
-    </p>
+    <div class="mt-4 flex flex-col gap-3 border-b border-base-300 pb-6 sm:flex-row sm:items-end sm:justify-between">
+      <div class="min-w-0">
+        <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">
+          {list.name ?? 'Untitled list'}
+        </h1>
+        <div class="mt-3 flex flex-wrap items-center gap-2">
+          <Badge variant="ghost">
+            {list.item_count} {list.item_count === 1 ? 'title' : 'titles'}
+          </Badge>
+          <Badge variant="ghost">
+            {members.length} {members.length === 1 ? 'member' : 'members'}
+          </Badge>
+        </div>
+      </div>
+    </div>
 
     {/* Interactive editor island. Falls back to the SSR list below without JS. */}
     <div
@@ -43,22 +47,17 @@ export const ListDetailPage = ({
     />
 
     <noscript>
-      <ul class="mt-6 divide-y divide-neutral-800">
-        {items.map((m) => (
-          <li key={m.id} class="flex items-center gap-4 py-3">
-            {m.poster_path ? (
-              <img
-                src={`https://image.tmdb.org/t/p/w92${m.poster_path}`}
-                class="w-10 h-14 object-cover rounded shrink-0"
-                alt=""
-              />
-            ) : (
-              <div class="w-10 h-14 bg-neutral-700 rounded shrink-0" />
-            )}
-            <span class="font-medium">{m.title}</span>
-          </li>
-        ))}
-      </ul>
+      {items.length === 0 ? (
+        <p class="mt-6 text-base-content/50">This list is empty.</p>
+      ) : (
+        <ul class="mt-6 divide-y divide-base-300/70">
+          {items.map((m) => (
+            <li key={m.id}>
+              <MediaRow item={m} href={`/media/${m.id}`} />
+            </li>
+          ))}
+        </ul>
+      )}
     </noscript>
   </Layout>
 )

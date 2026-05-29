@@ -1,4 +1,5 @@
 import { useState } from 'hono/jsx/dom'
+import { Button, TextInput, Alert, IconPlus } from '../../components/ui'
 
 export function CreateListForm() {
   const [name, setName] = useState('')
@@ -26,22 +27,27 @@ export function CreateListForm() {
   }
 
   return (
-    <form onSubmit={submit} class="flex gap-2">
-      <input
-        type="text"
-        value={name}
-        onInput={(e) => setName((e.target as HTMLInputElement).value)}
-        placeholder="New list name..."
-        class="flex-1 px-4 py-2 rounded-lg bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-neutral-500"
-      />
-      <button
-        type="submit"
-        disabled={busy || !name.trim()}
-        class="px-4 py-2 rounded-lg bg-neutral-100 text-neutral-900 font-medium disabled:opacity-50"
-      >
-        {busy ? 'Creating...' : 'Create list'}
-      </button>
-      {error && <span class="text-sm text-red-400 self-center">{error}</span>}
-    </form>
+    <div class="space-y-3">
+      <form onSubmit={submit} class="flex flex-col gap-2 sm:flex-row">
+        <TextInput
+          type="text"
+          value={name}
+          onInput={(e) => setName((e.target as HTMLInputElement).value)}
+          placeholder="New list name…"
+          aria-label="New list name"
+        />
+        <Button
+          type="submit"
+          variant="primary"
+          loading={busy}
+          disabled={!name.trim()}
+          class="shrink-0"
+        >
+          {!busy ? <IconPlus /> : null}
+          {busy ? 'Creating…' : 'Create list'}
+        </Button>
+      </form>
+      {error ? <Alert variant="error">{error}</Alert> : null}
+    </div>
   )
 }

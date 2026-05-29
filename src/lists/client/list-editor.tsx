@@ -1,5 +1,20 @@
 import { useState, useEffect } from 'hono/jsx/dom'
 import type { MediaItem } from '../../types'
+import {
+  Card,
+  CardBody,
+  Button,
+  TextInput,
+  Badge,
+  MediaRow,
+  EmptyState,
+  IconSearch,
+  IconPlus,
+  IconClose,
+  IconChevronUp,
+  IconChevronDown,
+  IconFilm,
+} from '../../components/ui'
 
 interface ListItem extends MediaItem {
   position: number
@@ -104,139 +119,166 @@ export function ListEditor({
   }
 
   return (
-    <div class="space-y-8">
-      <section>
-        <h2 class="text-lg font-semibold mb-2">Add a title</h2>
-        <input
-          type="search"
-          value={q}
-          onInput={(e) => setQ((e.target as HTMLInputElement).value)}
-          placeholder="Search movies and TV shows..."
-          class="w-full px-4 py-2 rounded-lg bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-neutral-500"
-        />
-        {results.length > 0 && (
-          <ul class="mt-2 divide-y divide-neutral-800 border border-neutral-800 rounded-lg">
-            {results.map((m) => (
+    <div class="space-y-6">
+      <Card>
+        <CardBody>
+          <h2 class="text-lg font-semibold">Add a title</h2>
+          <label class="input mt-3 flex w-full items-center gap-3">
+            <IconSearch class="text-base-content/40" />
+            <input
+              type="search"
+              value={q}
+              onInput={(e) => setQ((e.target as HTMLInputElement).value)}
+              placeholder="Search movies and TV shows…"
+              class="grow"
+            />
+          </label>
+          {results.length > 0 ? (
+            <ul class="mt-3 divide-y divide-base-300/70 overflow-hidden rounded-box border border-base-300">
+              {results.map((m) => (
+                <li key={m.id} class="px-1">
+                  <MediaRow
+                    item={m}
+                    trailing={
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => addMedia(m.id)}
+                        aria-label={`Add ${m.title}`}
+                      >
+                        <IconPlus />
+                        Add
+                      </Button>
+                    }
+                  />
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardBody>
+          <h2 class="flex items-center gap-2 text-lg font-semibold">
+            Titles
+            <Badge variant="ghost" size="sm">
+              {items.length}
+            </Badge>
+          </h2>
+          {items.length === 0 ? (
+            <EmptyState
+              class="mt-3"
+              icon={<IconFilm />}
+              title="No titles yet"
+              description="Search above to add movies and shows to this list."
+            />
+          ) : (
+            <ul class="mt-3 divide-y divide-base-300/70">
+              {items.map((m, i) => (
+                <li key={m.id} class="flex items-center gap-2 py-1">
+                  <span class="w-6 shrink-0 text-center text-sm tabular-nums text-base-content/40">
+                    {i + 1}
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <MediaRow item={m} href={`/media/${m.id}`} />
+                  </div>
+                  <div class="flex shrink-0 items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      square
+                      onClick={() => move(i, -1)}
+                      disabled={i === 0}
+                      aria-label="Move up"
+                    >
+                      <IconChevronUp />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      square
+                      onClick={() => move(i, 1)}
+                      disabled={i === items.length - 1}
+                      aria-label="Move down"
+                    >
+                      <IconChevronDown />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      square
+                      class="text-error"
+                      onClick={() => removeMedia(m.id)}
+                      aria-label="Remove"
+                    >
+                      <IconClose />
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardBody>
+          <h2 class="text-lg font-semibold">Members</h2>
+          <ul class="mt-3 divide-y divide-base-300/70">
+            {members.map((mem) => (
               <li
-                key={m.id}
-                class="flex items-center gap-3 py-2 px-3 hover:bg-neutral-800/50"
+                key={mem.actor_id}
+                class="flex items-center justify-between gap-3 py-2.5"
               >
-                {m.poster_path ? (
-                  <img
-                    src={`https://image.tmdb.org/t/p/w92${m.poster_path}`}
-                    class="w-8 h-12 object-cover rounded shrink-0"
-                    alt=""
-                  />
-                ) : (
-                  <div class="w-8 h-12 bg-neutral-700 rounded shrink-0" />
-                )}
-                <span class="flex-1 text-sm">
-                  {m.title}
-                  {m.year ? ` (${m.year})` : ''}
+                <span class="flex min-w-0 items-center gap-2">
+                  <span class="truncate text-sm font-medium">
+                    {mem.actor_id === actorId ? 'You' : mem.actor_id}
+                  </span>
+                  <Badge
+                    variant={mem.role === 'owner' ? 'primary' : 'ghost'}
+                    size="sm"
+                  >
+                    {mem.role}
+                  </Badge>
                 </span>
-                <button
-                  onClick={() => addMedia(m.id)}
-                  class="text-sm px-3 py-1 rounded bg-neutral-100 text-neutral-900 font-medium"
-                >
-                  Add
-                </button>
+                {mem.role !== 'owner' ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    class="text-error"
+                    onClick={() => removeMember(mem.actor_id)}
+                  >
+                    Remove
+                  </Button>
+                ) : null}
               </li>
             ))}
           </ul>
-        )}
-      </section>
-
-      <section>
-        <h2 class="text-lg font-semibold mb-2">Titles</h2>
-        {items.length === 0 ? (
-          <p class="text-neutral-400 text-sm">No titles yet.</p>
-        ) : (
-          <ul class="divide-y divide-neutral-800">
-            {items.map((m, i) => (
-              <li key={m.id} class="flex items-center gap-3 py-3">
-                <span class="w-6 text-neutral-500 text-sm tabular-nums">
-                  {i + 1}
-                </span>
-                {m.poster_path ? (
-                  <img
-                    src={`https://image.tmdb.org/t/p/w92${m.poster_path}`}
-                    class="w-10 h-14 object-cover rounded shrink-0"
-                    alt=""
-                  />
-                ) : (
-                  <div class="w-10 h-14 bg-neutral-700 rounded shrink-0" />
-                )}
-                <span class="flex-1 font-medium">{m.title}</span>
-                <div class="flex items-center gap-1">
-                  <button
-                    onClick={() => move(i, -1)}
-                    disabled={i === 0}
-                    class="px-2 py-1 rounded bg-neutral-800 disabled:opacity-30"
-                    aria-label="Move up"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    onClick={() => move(i, 1)}
-                    disabled={i === items.length - 1}
-                    class="px-2 py-1 rounded bg-neutral-800 disabled:opacity-30"
-                    aria-label="Move down"
-                  >
-                    ↓
-                  </button>
-                  <button
-                    onClick={() => removeMedia(m.id)}
-                    class="px-2 py-1 rounded bg-neutral-800 text-red-400"
-                    aria-label="Remove"
-                  >
-                    ✕
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section>
-        <h2 class="text-lg font-semibold mb-2">Members</h2>
-        <ul class="divide-y divide-neutral-800 mb-3">
-          {members.map((mem) => (
-            <li
-              key={mem.actor_id}
-              class="flex items-center justify-between py-2 text-sm"
-            >
-              <span class="truncate">
-                {mem.actor_id === actorId ? 'You' : mem.actor_id}
-                <span class="ml-2 text-neutral-500">({mem.role})</span>
-              </span>
-              {mem.role !== 'owner' && (
-                <button
-                  onClick={() => removeMember(mem.actor_id)}
-                  class="text-red-400"
-                >
-                  Remove
-                </button>
-              )}
-            </li>
-          ))}
-        </ul>
-        <form onSubmit={addMember} class="flex gap-2">
-          <input
-            type="text"
-            value={memberId}
-            onInput={(e) => setMemberId((e.target as HTMLInputElement).value)}
-            placeholder="Member id to invite..."
-            class="flex-1 px-3 py-2 rounded-lg bg-neutral-800 border border-neutral-700 focus:outline-none focus:border-neutral-500 text-sm"
-          />
-          <button
-            type="submit"
-            class="px-3 py-2 rounded-lg bg-neutral-100 text-neutral-900 font-medium text-sm"
+          <form
+            onSubmit={addMember}
+            class="mt-4 flex flex-col gap-2 sm:flex-row"
           >
-            Invite
-          </button>
-        </form>
-      </section>
+            <TextInput
+              type="text"
+              size="sm"
+              value={memberId}
+              onInput={(e) => setMemberId((e.target as HTMLInputElement).value)}
+              placeholder="Member id to invite…"
+              aria-label="Member id to invite"
+            />
+            <Button
+              type="submit"
+              variant="secondary"
+              size="sm"
+              disabled={!memberId.trim()}
+              class="shrink-0"
+            >
+              Invite
+            </Button>
+          </form>
+        </CardBody>
+      </Card>
     </div>
   )
 }
