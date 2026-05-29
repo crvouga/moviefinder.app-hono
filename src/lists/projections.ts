@@ -1,9 +1,5 @@
 import { db } from '../db'
-import {
-  LIST_NAMESPACE,
-  MediaListEvent,
-  type StoredEvent,
-} from './domain'
+import { LIST_NAMESPACE, MediaListEvent, type StoredEvent } from './domain'
 
 /**
  * Fold a single event into the read-model tables (media_list,

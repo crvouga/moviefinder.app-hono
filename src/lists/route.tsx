@@ -131,7 +131,8 @@ listsRoute.delete('/api/lists/:id/items/:mediaId', (c) => {
   try {
     const actorId = getActorId(c)
     const mediaId = Number(c.req.param('mediaId'))
-    if (!Number.isInteger(mediaId)) return c.json({ error: 'invalid_request' }, 400)
+    if (!Number.isInteger(mediaId))
+      return c.json({ error: 'invalid_request' }, 400)
     handleCommand(actorId, {
       command_type: 'RemoveMedia',
       list_id: c.req.param('id'),

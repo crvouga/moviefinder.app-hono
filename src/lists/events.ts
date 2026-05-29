@@ -1,9 +1,5 @@
 import { db } from '../db'
-import {
-  LIST_NAMESPACE,
-  MediaListEvent,
-  type StoredEvent,
-} from './domain'
+import { LIST_NAMESPACE, MediaListEvent, type StoredEvent } from './domain'
 import { applyEvent } from './projections'
 
 interface EventRow {
@@ -115,9 +111,7 @@ export function readEvents(aggregateId: string): StoredEvent[] {
 /** Every list event in global insertion order, used for projection rebuilds. */
 export function readAllEvents(): StoredEvent[] {
   const rows = db
-    .query(
-      `SELECT * FROM events WHERE namespace = ? ORDER BY id ASC`,
-    )
+    .query(`SELECT * FROM events WHERE namespace = ? ORDER BY id ASC`)
     .all(LIST_NAMESPACE) as EventRow[]
   return rows.map(toStored)
 }

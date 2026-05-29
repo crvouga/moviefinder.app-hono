@@ -1,10 +1,6 @@
 import { db } from '../db'
 import { appendEvent } from './events'
-import {
-  MediaListCommand,
-  type MemberRole,
-  type StoredEvent,
-} from './domain'
+import { MediaListCommand, type MemberRole, type StoredEvent } from './domain'
 
 /** Thrown when an actor is not allowed to perform a command on a list. */
 export class ListAccessError extends Error {
@@ -37,7 +33,9 @@ function loadList(listId: string): ListState {
 
 function memberRole(listId: string, actorId: string): MemberRole | null {
   const row = db
-    .query(`SELECT role FROM media_list_member WHERE list_id = ? AND actor_id = ?`)
+    .query(
+      `SELECT role FROM media_list_member WHERE list_id = ? AND actor_id = ?`,
+    )
     .get(listId, actorId) as { role: MemberRole } | null
   return row?.role ?? null
 }
@@ -76,7 +74,11 @@ export function handleCommand(
       return appendEvent({
         aggregateId: listId,
         actorId,
-        event: { event_type: 'UserCreatedList', list_id: listId, name: command.name },
+        event: {
+          event_type: 'UserCreatedList',
+          list_id: listId,
+          name: command.name,
+        },
       })
     }
 

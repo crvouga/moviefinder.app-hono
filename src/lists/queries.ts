@@ -69,9 +69,7 @@ export function getMembers(listId: string): MediaListMember[] {
 
 export function isMember(listId: string, actorId: string): boolean {
   const row = db
-    .query(
-      `SELECT 1 FROM media_list_member WHERE list_id = ? AND actor_id = ?`,
-    )
+    .query(`SELECT 1 FROM media_list_member WHERE list_id = ? AND actor_id = ?`)
     .get(listId, actorId)
   return row !== null
 }
