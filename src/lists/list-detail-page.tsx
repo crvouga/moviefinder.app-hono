@@ -18,7 +18,11 @@ export const ListDetailPage = ({
   actorId: string
   user?: NavUser
 }) => (
-  <Layout title={`${list.name ?? 'List'} — MovieFinder`} user={user}>
+  <Layout
+    title={`${list.name ?? 'List'} — MovieFinder`}
+    user={user}
+    activePath="/lists"
+  >
     <BackLink href="/lists">All lists</BackLink>
 
     <div class="mt-4 flex flex-col gap-3 border-b border-base-300 pb-6 sm:flex-row sm:items-end sm:justify-between">

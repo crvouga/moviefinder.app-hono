@@ -2,3 +2,9 @@
 @plugin "daisyui" {
   themes: night --default;
 }
+
+/* Always reserve space for the vertical scrollbar so page-to-page navigation
+   doesn't shift the layout horizontally. */
+html {
+  scrollbar-gutter: stable;
+}

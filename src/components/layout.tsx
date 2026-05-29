@@ -1,12 +1,25 @@
-import type { Child } from 'hono/jsx'
-import { IconFilm } from './ui/icon'
+import type { Child, FC } from 'hono/jsx'
+import { IconFilm, IconHome, IconTrending, IconList } from './ui/icon'
 
 export type NavUser = { phoneNumber?: string | null } | null
 
-const navLinks = [
-  { href: '/trending', label: 'Trending' },
-  { href: '/lists', label: 'Lists' },
+type DockLink = {
+  href: string
+  label: string
+  icon: FC<{ class?: string }>
+}
+
+const dockLinks: DockLink[] = [
+  { href: '/', label: 'Home', icon: IconHome },
+  { href: '/trending', label: 'Trending', icon: IconTrending },
+  { href: '/lists', label: 'Lists', icon: IconList },
 ]
+
+function isActive(linkHref: string, activePath?: string): boolean {
+  if (!activePath) return false
+  if (linkHref === '/') return activePath === '/'
+  return activePath === linkHref || activePath.startsWith(`${linkHref}/`)
+}
 
 function avatarLabel(user: NavUser): string {
   const digits = (user?.phoneNumber ?? '').replace(/\D/g, '')
@@ -68,14 +81,62 @@ function AccountMenu({ user }: { user?: NavUser }) {
   )
 }
 
+function TopNav({ activePath }: { activePath?: string }) {
+  return (
+    <ul class="menu menu-horizontal gap-1 px-1 font-medium">
+      {dockLinks.map((link) => {
+        const Icon = link.icon
+        const active = isActive(link.href, activePath)
+        return (
+          <li key={link.href}>
+            <a
+              href={link.href}
+              class={active ? 'menu-active' : ''}
+              aria-current={active ? 'page' : undefined}
+            >
+              <Icon class="text-base" />
+              {link.label}
+            </a>
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+function Dock({ activePath }: { activePath?: string }) {
+  return (
+    <nav class="dock z-40 border-t border-base-300 bg-base-200/95 backdrop-blur lg:hidden">
+      {dockLinks.map((link) => {
+        const Icon = link.icon
+        const active = isActive(link.href, activePath)
+        return (
+          <a
+            key={link.href}
+            href={link.href}
+            class={active ? 'dock-active' : ''}
+            aria-label={link.label}
+            aria-current={active ? 'page' : undefined}
+          >
+            <Icon class="text-xl" />
+            <span class="dock-label">{link.label}</span>
+          </a>
+        )
+      })}
+    </nav>
+  )
+}
+
 export const Layout = ({
   title,
   children,
   user,
+  activePath,
 }: {
   title: string
   children: Child
   user?: NavUser
+  activePath?: string
 }) => (
   <html lang="en" data-theme="night">
     <head>
@@ -84,59 +145,21 @@ export const Layout = ({
       <title>{title}</title>
       <link rel="stylesheet" href="/public/styles.css" />
     </head>
-    <body class="flex min-h-screen flex-col bg-base-100 text-base-content">
-      <header class="sticky top-0 z-40 border-b border-base-300 bg-base-200/80 backdrop-blur">
+    <body class="flex min-h-screen flex-col bg-base-100 pb-24 text-base-content lg:pb-0">
+      <header class="sticky top-0 z-30 border-b border-base-300 bg-base-200/80 backdrop-blur">
         <div class="navbar mx-auto max-w-6xl px-3 sm:px-4">
           <div class="navbar-start">
-            <div class="dropdown">
-              <div
-                tabindex={0}
-                role="button"
-                class="btn btn-ghost btn-square lg:hidden"
-                aria-label="Open menu"
-              >
-                <svg
-                  class="h-5 w-5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  stroke-linecap="round"
-                  aria-hidden="true"
-                >
-                  <line x1="4" y1="7" x2="20" y2="7" />
-                  <line x1="4" y1="12" x2="20" y2="12" />
-                  <line x1="4" y1="17" x2="20" y2="17" />
-                </svg>
-              </div>
-              <ul
-                tabindex={0}
-                class="menu dropdown-content menu-sm z-50 mt-3 w-52 rounded-box border border-base-300 bg-base-200 p-2 shadow-xl"
-              >
-                {navLinks.map((link) => (
-                  <li key={link.href}>
-                    <a href={link.href}>{link.label}</a>
-                  </li>
-                ))}
-              </ul>
-            </div>
             <Brand />
           </div>
           <div class="navbar-center hidden lg:flex">
-            <ul class="menu menu-horizontal gap-1 px-1 font-medium">
-              {navLinks.map((link) => (
-                <li key={link.href}>
-                  <a href={link.href}>{link.label}</a>
-                </li>
-              ))}
-            </ul>
+            <TopNav activePath={activePath} />
           </div>
           <div class="navbar-end gap-2">
             <AccountMenu user={user} />
           </div>
         </div>
       </header>
-      <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-10 overflow-y-scroll">
+      <main class="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:py-10">
         {children}
       </main>
       <footer class="footer footer-center border-t border-base-300 bg-base-200/40 px-4 py-6 text-base-content/50">
@@ -156,6 +179,7 @@ export const Layout = ({
           </p>
         </aside>
       </footer>
+      <Dock activePath={activePath} />
       <script type="module" src="/public/client.js"></script>
     </body>
   </html>

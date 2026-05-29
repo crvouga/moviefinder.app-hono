@@ -17,7 +17,7 @@ export const ListsPage = ({
   lists: MediaList[]
   user?: NavUser
 }) => (
-  <Layout title="Your lists — MovieFinder" user={user}>
+  <Layout title="Your lists — MovieFinder" user={user} activePath="/lists">
     <PageHeader
       eyebrow="Collections"
       title="Your lists"

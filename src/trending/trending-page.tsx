@@ -10,7 +10,7 @@ export const TrendingPage = ({
   items: MediaItem[]
   user?: NavUser
 }) => (
-  <Layout title="Trending — MovieFinder" user={user}>
+  <Layout title="Trending — MovieFinder" user={user} activePath="/trending">
     <PageHeader
       eyebrow="This week"
       title="Trending now"

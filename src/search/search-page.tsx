@@ -3,7 +3,7 @@ import type { NavUser } from '../components/layout'
 import { PageHeader } from '../components/ui'
 
 export const SearchPage = ({ user }: { user?: NavUser }) => (
-  <Layout title="MovieFinder" user={user}>
+  <Layout title="MovieFinder" user={user} activePath="/">
     <PageHeader
       eyebrow="Discover"
       title="Find something to watch"
