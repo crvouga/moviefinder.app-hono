@@ -3,11 +3,11 @@ import type { NavUser } from '../components/layout'
 import type { MediaList } from './queries'
 import {
   PageHeader,
-  Card,
-  CardBody,
   Badge,
+  Button,
   EmptyState,
   IconList,
+  IconPlus,
 } from '../components/ui'
 
 export const ListsPage = ({
@@ -22,24 +22,25 @@ export const ListsPage = ({
       eyebrow="Collections"
       title="Your lists"
       subtitle="Organize movies and shows you love into shareable collections."
+      actions={
+        <Button href="/lists/new" variant="primary">
+          <IconPlus />
+          New list
+        </Button>
+      }
     />
-
-    <Card class="mb-8">
-      <CardBody>
-        <div id="create-list-root" />
-        <noscript>
-          <p class="text-sm text-base-content/50">
-            JavaScript is required to create and edit lists.
-          </p>
-        </noscript>
-      </CardBody>
-    </Card>
 
     {lists.length === 0 ? (
       <EmptyState
         icon={<IconList />}
         title="No lists yet"
-        description="Create your first list above to start collecting movies and shows."
+        description="Create your first list to start collecting movies and shows."
+        action={
+          <Button href="/lists/new" variant="primary">
+            <IconPlus />
+            New list
+          </Button>
+        }
       />
     ) : (
       <ul class="grid gap-3 sm:grid-cols-2">

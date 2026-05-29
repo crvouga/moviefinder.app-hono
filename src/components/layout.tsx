@@ -71,10 +71,12 @@ function AccountMenu({ user }: { user?: NavUser }) {
         <li>
           <a href="/lists">Your lists</a>
         </li>
-        <li>
-          <a href="#" id="signout" class="text-error">
-            Sign out
-          </a>
+        <li class="p-0">
+          <form method="post" action="/logout" class="p-0">
+            <button type="submit" class="w-full px-4 py-2 text-left text-error">
+              Sign out
+            </button>
+          </form>
         </li>
       </ul>
     </div>
@@ -144,6 +146,10 @@ export const Layout = ({
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <title>{title}</title>
       <link rel="stylesheet" href="/public/styles.css" />
+      <script
+        type="module"
+        src="https://cdn.jsdelivr.net/gh/starfederation/datastar@v1.0.1/bundles/datastar.js"
+      ></script>
     </head>
     <body class="flex min-h-screen flex-col bg-base-100 pb-24 text-base-content lg:pb-0">
       <header class="sticky top-0 z-30 border-b border-base-300 bg-base-200/80 backdrop-blur">
@@ -180,7 +186,6 @@ export const Layout = ({
         </aside>
       </footer>
       <Dock activePath={activePath} />
-      <script type="module" src="/public/client.js"></script>
     </body>
   </html>
 )

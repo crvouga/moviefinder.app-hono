@@ -1,14 +1,19 @@
 import { db } from '../db'
 import type { MediaItem } from '../types'
 
-export function getTrending(): MediaItem[] {
+export const PAGE_SIZE = 20
+
+export function getTrending(
+  limit: number = PAGE_SIZE,
+  offset = 0,
+): MediaItem[] {
   return db
     .query(
       `
       SELECT * FROM media
       ORDER BY vote_count DESC NULLS LAST, rating DESC NULLS LAST
-      LIMIT 20
+      LIMIT ? OFFSET ?
     `,
     )
-    .all() as MediaItem[]
+    .all(limit, offset) as MediaItem[]
 }
