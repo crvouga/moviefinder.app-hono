@@ -1,0 +1,24 @@
+{
+  "name": "moviefinder",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "doppler run -- bun run dev:run",
+    "dev:run": "bun run build && bun run --hot src/server.tsx",
+    "build:css": "bunx @tailwindcss/cli -i src/styles.input.css -o public/styles.css --minify",
+    "build:client": "bun build src/client/entry.tsx --outfile public/client.js --minify",
+    "build": "bun run build:css && bun run build:client",
+    "start": "doppler run -- bun run start:run",
+    "start:run": "bun run build && bun src/server.tsx",
+    "tc": "bunx tsc --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4",
+    "bun-types": "latest",
+    "tailwindcss": "^4"
+  }
+}
