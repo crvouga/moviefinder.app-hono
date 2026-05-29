@@ -7,7 +7,7 @@ import {
   PRIMARY_REGION,
   WWW_HOST,
 } from './config'
-import { capture, captureJson, isDryRun, log, run } from './shell'
+import { captureJson, isDryRun, log, run } from './shell'
 
 const STEP = 'fly'
 
@@ -98,7 +98,8 @@ export async function setRuntimeSecrets(secrets: Record<string, string>): Promis
     return
   }
   const payload = names.map((name) => `${name}=${secrets[name]}`).join('\n')
-  await $`fly secrets import --stage ${flagApp()} < ${payload}`
+  // Bun shell stdin redirection requires a Buffer/Blob, not a plain string.
+  await $`fly secrets import --stage ${flagApp()} < ${Buffer.from(payload)}`
 }
 
 /** Deploy a prebuilt image, or build from the Dockerfile when no image is given. */
