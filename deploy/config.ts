@@ -5,6 +5,9 @@
 
 export const APP_NAME = 'moviefinder'
 
+/** Fly CLI binary (`flyctl` on CI; override with FLY_BIN=fly locally if needed). */
+export const FLY_BIN = process.env.FLY_BIN ?? 'flyctl'
+
 export const ZONE = 'moviefinder.app'
 export const WWW_HOST = `www.${ZONE}`
 

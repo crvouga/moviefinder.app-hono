@@ -1,6 +1,7 @@
 import { $ } from 'bun'
 import {
   APP_NAME,
+  FLY_BIN,
   FLY_IMAGE,
   FLY_VOLUME,
   FLY_VOLUME_SIZE_GB,
@@ -32,41 +33,43 @@ function flagApp(): string[] {
   return ['--app', APP_NAME]
 }
 
+function flyCmd(...args: string[]): string[] {
+  return [FLY_BIN, ...args]
+}
+
 export async function ensureApp(): Promise<void> {
-  const existing = await captureJson<{ Name?: string }[]>(['fly', 'apps', 'list', '--json'])
+  const existing = await captureJson<{ Name?: string }[]>(flyCmd('apps', 'list', '--json'))
   const found = existing?.some((a) => a.Name === APP_NAME)
   if (found) {
     log(STEP, `app ${APP_NAME} already exists`)
     return
   }
-  await run(STEP, ['fly', 'apps', 'create', APP_NAME, '--org', 'personal'])
+  await run(STEP, flyCmd('apps', 'create', APP_NAME, '--org', 'personal'))
 }
 
 export async function ensureVolume(): Promise<void> {
-  const volumes = await captureJson<{ name?: string }[]>([
-    'fly',
-    'volumes',
-    'list',
-    ...flagApp(),
-    '--json',
-  ])
+  const volumes = await captureJson<{ name?: string }[]>(
+    flyCmd('volumes', 'list', ...flagApp(), '--json')
+  )
   const found = volumes?.some((v) => v.name === FLY_VOLUME)
   if (found) {
     log(STEP, `volume ${FLY_VOLUME} already exists`)
     return
   }
-  await run(STEP, [
-    'fly',
-    'volumes',
-    'create',
-    FLY_VOLUME,
-    '--region',
-    PRIMARY_REGION,
-    '--size',
-    String(FLY_VOLUME_SIZE_GB),
-    '--yes',
-    ...flagApp(),
-  ])
+  await run(
+    STEP,
+    flyCmd(
+      'volumes',
+      'create',
+      FLY_VOLUME,
+      '--region',
+      PRIMARY_REGION,
+      '--size',
+      String(FLY_VOLUME_SIZE_GB),
+      '--yes',
+      ...flagApp()
+    )
+  )
 }
 
 /**
@@ -77,7 +80,7 @@ export async function pushImageToFlyRegistry(ghcrRepository: string, tag: string
   const ghcrImage = `ghcr.io/${ghcrRepository.toLowerCase()}:${tag}`
   const flyImage = `${FLY_IMAGE}:${tag}`
 
-  await run(STEP, ['fly', 'auth', 'docker'])
+  await run(STEP, flyCmd('auth', 'docker'))
   await run(STEP, ['docker', 'pull', ghcrImage])
   await run(STEP, ['docker', 'tag', ghcrImage, flyImage])
   await run(STEP, ['docker', 'push', flyImage])
@@ -99,21 +102,21 @@ export async function setRuntimeSecrets(secrets: Record<string, string>): Promis
   }
   const payload = names.map((name) => `${name}=${secrets[name]}`).join('\n')
   // Bun shell stdin redirection requires a Buffer/Blob, not a plain string.
-  await $`fly secrets import --stage ${flagApp()} < ${Buffer.from(payload)}`
+  await $`${FLY_BIN} secrets import --stage ${flagApp()} < ${Buffer.from(payload)}`
 }
 
 /** Deploy a prebuilt image, or build from the Dockerfile when no image is given. */
 export async function deploy(flyImage: string | null): Promise<void> {
   if (flyImage) {
-    await run(STEP, ['fly', 'deploy', '--image', flyImage, ...flagApp(), '--yes'])
+    await run(STEP, flyCmd('deploy', '--image', flyImage, ...flagApp(), '--yes'))
   } else {
-    await run(STEP, ['fly', 'deploy', '--remote-only', ...flagApp(), '--yes'])
+    await run(STEP, flyCmd('deploy', '--remote-only', ...flagApp(), '--yes'))
   }
 }
 
 /** Ensure the app has a dedicated public IPv6 and return it. */
 export async function ensureIpv6(): Promise<string | null> {
-  const ips = await captureJson<FlyIp[]>(['fly', 'ips', 'list', ...flagApp(), '--json'])
+  const ips = await captureJson<FlyIp[]>(flyCmd('ips', 'list', ...flagApp(), '--json'))
   const existing = ips?.find((ip) => (ip.Type ?? ip.type) === 'v6')
   const existingAddr = existing?.Address ?? existing?.address
   if (existingAddr) {
@@ -121,28 +124,24 @@ export async function ensureIpv6(): Promise<string | null> {
     return existingAddr
   }
 
-  await run(STEP, ['fly', 'ips', 'allocate-v6', ...flagApp()])
+  await run(STEP, flyCmd('ips', 'allocate-v6', ...flagApp()))
   if (isDryRun()) return null
 
-  const after = await captureJson<FlyIp[]>(['fly', 'ips', 'list', ...flagApp(), '--json'])
+  const after = await captureJson<FlyIp[]>(flyCmd('ips', 'list', ...flagApp(), '--json'))
   const created = after?.find((ip) => (ip.Type ?? ip.type) === 'v6')
   return created?.Address ?? created?.address ?? null
 }
 
 export async function ensureCert(): Promise<void> {
-  const certs = await captureJson<{ Hostname?: string; hostname?: string }[]>([
-    'fly',
-    'certs',
-    'list',
-    ...flagApp(),
-    '--json',
-  ])
+  const certs = await captureJson<{ Hostname?: string; hostname?: string }[]>(
+    flyCmd('certs', 'list', ...flagApp(), '--json')
+  )
   const found = certs?.some((c) => (c.Hostname ?? c.hostname) === WWW_HOST)
   if (found) {
     log(STEP, `certificate for ${WWW_HOST} already requested`)
     return
   }
-  await run(STEP, ['fly', 'certs', 'add', WWW_HOST, ...flagApp()])
+  await run(STEP, flyCmd('certs', 'add', WWW_HOST, ...flagApp()))
 }
 
 /**
@@ -151,14 +150,9 @@ export async function ensureCert(): Promise<void> {
  */
 export async function readCertDns(): Promise<CertDns> {
   if (isDryRun()) return {}
-  const raw = await captureJson<Record<string, unknown>>([
-    'fly',
-    'certs',
-    'show',
-    WWW_HOST,
-    ...flagApp(),
-    '--json',
-  ])
+  const raw = await captureJson<Record<string, unknown>>(
+    flyCmd('certs', 'show', WWW_HOST, ...flagApp(), '--json')
+  )
   if (!raw) {
     log(STEP, `could not read cert details for ${WWW_HOST}`)
     return {}
