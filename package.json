@@ -15,7 +15,8 @@
     "deploy:plan": "doppler run -- bun run deploy/deploy.ts --plan",
     "deploy:fly": "doppler run -- bun run deploy/deploy.ts --only=fly",
     "deploy:dns": "doppler run -- bun run deploy/deploy.ts --only=cloudflare",
-    "tc": "bunx tsc --noEmit"
+    "tc": "bunx tsc --noEmit",
+    "gh": "open https://github.com/crvouga/moviefinder.app-hono.git"
   },
   "dependencies": {
     "hono": "^4"
