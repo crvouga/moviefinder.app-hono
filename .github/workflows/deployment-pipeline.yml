@@ -73,7 +73,7 @@ jobs:
 
       - name: Deploy to Fly.io and configure Cloudflare
         env:
-          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_SERVICE_TOKEN }}
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
           GHCR_REPOSITORY: ${{ github.repository }}
         run: doppler run -- bun run deploy/deploy.ts
