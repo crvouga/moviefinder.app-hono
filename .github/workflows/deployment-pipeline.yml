@@ -12,10 +12,14 @@ jobs:
       packages: write
       actions: write
     outputs:
-      image_tag: sha-${{ github.sha }}
+      image_tag: ${{ steps.image_tag.outputs.tag }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Resolve image tag
+        id: image_tag
+        run: echo "tag=sha-$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -81,3 +85,74 @@ jobs:
           IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
           GHCR_REPOSITORY: ${{ github.repository }}
         run: doppler run -- bun run deploy/deploy.ts
+
+  summary:
+    name: Summary
+    needs: [build-and-push, deploy]
+    if: always()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Write deployment summary
+        env:
+          BUILD_RESULT: ${{ needs.build-and-push.result }}
+          DEPLOY_RESULT: ${{ needs.deploy.result }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+          GHCR_REPOSITORY: ${{ github.repository }}
+          COMMIT_SHA: ${{ github.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          status_icon() {
+            case "$1" in
+              success) echo "✅" ;;
+              failure) echo "❌" ;;
+              cancelled) echo "🚫" ;;
+              skipped) echo "⏭️" ;;
+              *) echo "⚠️" ;;
+            esac
+          }
+
+          OVERALL="$BUILD_RESULT"
+          if [ "$DEPLOY_RESULT" = "failure" ] || [ "$DEPLOY_RESULT" = "cancelled" ]; then
+            OVERALL="$DEPLOY_RESULT"
+          elif [ "$BUILD_RESULT" = "success" ] && [ "$DEPLOY_RESULT" = "skipped" ]; then
+            OVERALL="failure"
+          fi
+
+          case "$OVERALL" in
+            success) HEADER="Deployment succeeded" ;;
+            cancelled) HEADER="Deployment cancelled" ;;
+            *) HEADER="Deployment failed" ;;
+          esac
+
+          IMAGE="ghcr.io/${GHCR_REPOSITORY}:${IMAGE_TAG}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## ${HEADER}
+
+          | | |
+          | --- | --- |
+          | **Commit** | [\`${SHORT_SHA}\`](${RUN_URL}) |
+          | **Container image** | \`${IMAGE}\` |
+          | **Also tagged** | \`ghcr.io/${GHCR_REPOSITORY}:latest\` |
+
+          ### Pipeline
+
+          | Stage | Result |
+          | --- | --- |
+          | Build & push | $(status_icon "$BUILD_RESULT") ${BUILD_RESULT} |
+          | Deploy | $(status_icon "$DEPLOY_RESULT") ${DEPLOY_RESULT} |
+
+          ### Live
+
+          | | |
+          | --- | --- |
+          | **Site** | https://www.moviefinder.app |
+          | **Apex redirect** | https://moviefinder.app → www |
+          | **Fly app** | [moviefinder](https://fly.io/apps/moviefinder) |
+          | **Package** | [GHCR](https://github.com/${GHCR_REPOSITORY}/pkgs/container/moviefinder.app-hono) |
+
+          ---
+          _[View workflow run](${RUN_URL})_
+          EOF
