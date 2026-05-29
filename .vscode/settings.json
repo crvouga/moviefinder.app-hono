@@ -4,6 +4,8 @@
     "Buildx",
     "bunx",
     "dopplerhq",
+    "elif",
+    "esac",
     "flyctl",
     "healthcheck",
     "moviefinder",
