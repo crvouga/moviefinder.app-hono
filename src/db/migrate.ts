@@ -1,4 +1,4 @@
-import { DatabaseMigration } from '../db-migrate/DatabaseMigration'
+import { DatabaseMigration } from '../db-migrate/database-migration'
 import { db } from './index'
 
 const MEDIA_VIEW_SELECT = `

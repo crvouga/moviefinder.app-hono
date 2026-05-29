@@ -1,4 +1,4 @@
-import { Layout } from '../components/Layout'
+import { Layout } from '../components/layout'
 import type { MediaItem } from '../types'
 
 export const TrendingPage = ({ items }: { items: MediaItem[] }) => (

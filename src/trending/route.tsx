@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { TrendingPage } from './TrendingPage'
+import { TrendingPage } from './trending-page'
 import { getTrending } from './queries'
 import { fetchTrendingAndIngest } from '../tmdb/ingest'
 

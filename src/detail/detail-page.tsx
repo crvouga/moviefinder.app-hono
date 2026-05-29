@@ -1,4 +1,4 @@
-import { Layout } from '../components/Layout'
+import { Layout } from '../components/layout'
 import type { MediaItem } from '../types'
 
 function runtimeLabel(m: MediaItem): string | null {

@@ -5,7 +5,22 @@ on:
     branches: [main]
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Enforce kebab-case filenames
+        run: bun run lint:filenames
+
+      - name: Typecheck
+        run: bun run tc
+
   build-and-push:
+    needs: check
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -51,7 +66,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    needs: build-and-push
+    needs: [check, build-and-push]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -88,7 +103,7 @@ jobs:
 
   summary:
     name: Summary
-    needs: [build-and-push, deploy]
+    needs: [check, build-and-push, deploy]
     if: always()
     runs-on: ubuntu-latest
 

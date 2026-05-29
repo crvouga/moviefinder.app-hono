@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { DetailPage } from './DetailPage'
+import { DetailPage } from './detail-page'
 import { getMediaById } from './queries'
 import { fetchDetailAndIngest } from '../tmdb/ingest'
 

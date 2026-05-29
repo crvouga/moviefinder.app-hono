@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { SearchPage } from './SearchPage'
+import { SearchPage } from './search-page'
 import { searchMedia } from './queries'
 import { searchAndIngest } from '../tmdb/ingest'
 

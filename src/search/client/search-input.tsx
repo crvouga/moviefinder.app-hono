@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'hono/jsx/dom'
-import type { MediaItem } from '../types'
+import type { MediaItem } from '../../types'
 
 export function SearchInput() {
   const [q, setQ] = useState('')
