@@ -42,11 +42,11 @@ export function SearchInput() {
                 {m.poster_path ? (
                   <img
                     src={`https://image.tmdb.org/t/p/w92${m.poster_path}`}
-                    class="w-10 h-14 object-cover rounded flex-shrink-0"
+                    class="w-10 h-14 object-cover rounded shrink-0"
                     alt=""
                   />
                 ) : (
-                  <div class="w-10 h-14 bg-neutral-700 rounded flex-shrink-0" />
+                  <div class="w-10 h-14 bg-neutral-700 rounded shrink-0" />
                 )}
                 <div>
                   <div class="font-medium">{m.title}</div>
