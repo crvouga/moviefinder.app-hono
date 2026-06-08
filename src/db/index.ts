@@ -29,7 +29,7 @@ function wrapPool(pool: Pool): Pool {
           const client = await target.connect()
           try {
             await client.query(SET_APP_SEARCH_PATH)
-            return client.query(text, params)
+            return await client.query(text, params)
           } finally {
             client.release()
           }

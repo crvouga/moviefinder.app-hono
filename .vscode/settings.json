@@ -8,9 +8,11 @@
     "esac",
     "healthcheck",
     "hono",
+    "kysely",
     "moviefinder",
-    "wrangler",
-    "TMDB"
+    "neondatabase",
+    "TMDB",
+    "wrangler"
   ],
   "editor.formatOnSave": true,
   "editor.formatOnPaste": true,

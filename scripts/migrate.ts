@@ -30,17 +30,17 @@ SELECT
   e.data->>'overview'                                        AS overview,
   e.data->>'poster_path'                                   AS poster_path,
   e.data->>'backdrop_path'                                 AS backdrop_path,
-  (e.data->>'vote_average')::double precision              AS rating,
-  (e.data->>'vote_count')::integer                         AS vote_count,
+  NULLIF(e.data->>'vote_average', '')::double precision      AS rating,
+  NULLIF(e.data->>'vote_count', '')::integer                 AS vote_count,
   CAST(LEFT(
     COALESCE(
-      e.data->>'release_date',
-      e.data->>'first_air_date'
+      NULLIF(e.data->>'release_date', ''),
+      NULLIF(e.data->>'first_air_date', '')
     ), 4
   ) AS INTEGER)                                            AS year,
-  (e.data->>'runtime')::integer                            AS runtime,
-  (e.data->>'number_of_seasons')::integer                  AS seasons,
-  (e.data->>'number_of_episodes')::integer                 AS episodes,
+  NULLIF(e.data->>'runtime', '')::integer                    AS runtime,
+  NULLIF(e.data->>'number_of_seasons', '')::integer          AS seasons,
+  NULLIF(e.data->>'number_of_episodes', '')::integer         AS episodes,
   e.data->>'status'                                          AS status
 FROM ${qualify('entities')} e
 WHERE e.namespace = 'tmdb'

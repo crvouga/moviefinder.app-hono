@@ -25,12 +25,12 @@ trendingRoute.get('/trending', async (c) => {
   )
 })
 
-trendingRoute.get('/trending/more', (c) =>
-  datastarResponse(c, async function* () {
-    const { trendingOffset } = readSignals<{ trendingOffset?: number }>(c)
-    const offset = Number(trendingOffset) || 0
-    const next = await getTrending(PAGE_SIZE, offset)
+trendingRoute.get('/trending/more', async (c) => {
+  const { trendingOffset } = readSignals<{ trendingOffset?: number }>(c)
+  const offset = Number(trendingOffset) || 0
+  const next = await getTrending(PAGE_SIZE, offset)
 
+  return datastarResponse(c, async function* () {
     if (next.length > 0) {
       const html = (<TrendingCards items={next} />).toString()
       yield patchElements(html, { selector: '#trending-grid', mode: 'append' })
@@ -40,5 +40,5 @@ trendingRoute.get('/trending/more', (c) =>
     if (next.length < PAGE_SIZE) {
       yield removeElements('#trending-sentinel')
     }
-  }),
-)
+  })
+})
