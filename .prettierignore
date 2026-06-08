@@ -1,8 +1,5 @@
 node_modules/
 public/styles.css
 public/client.js
-*.db
-*.db-shm
-*.db-wal
-data/
 bun.lock
+worker-configuration.d.ts

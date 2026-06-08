@@ -1,4 +1,11 @@
-import type { Database } from 'bun:sqlite'
+import type { Pool, PoolClient } from '@neondatabase/serverless'
+import {
+  APP_SCHEMA,
+  SET_APP_SEARCH_PATH,
+  assertAppScopedSql,
+  qualify,
+  quoteIdent,
+} from '../db/schema'
 
 interface ColumnDef {
   name: string
@@ -18,14 +25,18 @@ interface ViewDef {
 
 const SNAPSHOT_TABLE = '_migration_snapshot'
 
+type Db = Pool | PoolClient
+
+async function runQuery(db: Db, sql: string, params: unknown[] = []) {
+  assertAppScopedSql(sql)
+  return db.query(sql, params)
+}
+
 /**
- * A flat, append-only, idempotent schema migration DSL.
+ * A flat, append-only, idempotent schema migration DSL for PostgreSQL.
  *
- * Declarations are collected in order. Re-declaring a column overwrites its
- * definition (last write wins) while keeping its original position. Calling
- * `run` reconciles the live database to the declared schema: missing columns
- * are added, changed column definitions trigger a SQLite table rebuild, and
- * indexes/views are dropped and recreated.
+ * All objects are created in {@link APP_SCHEMA}. The public schema is never
+ * used or referenced.
  */
 export class DatabaseMigration {
   private readonly tableOrder: string[] = []
@@ -74,51 +85,71 @@ export class DatabaseMigration {
     return this
   }
 
-  run(db: Database): void {
-    db.run('PRAGMA journal_mode = WAL')
-    db.run('PRAGMA foreign_keys = ON')
-    db.run('PRAGMA synchronous = NORMAL')
+  async run(db: Pool): Promise<void> {
+    const client = await db.connect()
+    try {
+      await client.query(
+        `CREATE SCHEMA IF NOT EXISTS ${quoteIdent(APP_SCHEMA)}`,
+      )
+      await client.query(SET_APP_SEARCH_PATH)
 
-    db.run(
-      `CREATE TABLE IF NOT EXISTS ${SNAPSHOT_TABLE} (
+      await runQuery(
+        client,
+        `CREATE TABLE IF NOT EXISTS ${qualify(SNAPSHOT_TABLE)} (
         table_name   TEXT PRIMARY KEY,
         columns_json TEXT NOT NULL
       )`,
-    )
-
-    for (const table of this.tableOrder) {
-      this.reconcileTable(db, table)
-    }
-
-    for (const idx of this.indexes) {
-      db.run(`DROP INDEX IF EXISTS ${idx.name}`)
-      db.run(
-        `CREATE ${idx.unique ? 'UNIQUE ' : ''}INDEX ${idx.name} ON ${idx.target}`,
       )
-    }
 
-    for (const v of this.views) {
-      db.run(`DROP VIEW IF EXISTS ${v.name}`)
-      db.run(`CREATE VIEW ${v.name} AS ${v.select}`)
+      for (const table of this.tableOrder) {
+        await this.reconcileTable(client, table)
+      }
+
+      for (const idx of this.indexes) {
+        await runQuery(
+          client,
+          `DROP INDEX IF EXISTS ${quoteIdent(APP_SCHEMA)}.${quoteIdent(idx.name)}`,
+        )
+        await runQuery(
+          client,
+          `CREATE ${idx.unique ? 'UNIQUE ' : ''}INDEX ${quoteIdent(idx.name)} ON ${idx.target}`,
+        )
+      }
+
+      for (const v of this.views) {
+        await runQuery(client, `DROP VIEW IF EXISTS ${qualify(v.name)}`)
+        await runQuery(client, `CREATE VIEW ${qualify(v.name)} AS ${v.select}`)
+      }
+    } finally {
+      client.release()
     }
   }
 
-  private reconcileTable(db: Database, table: string): void {
+  private formatColumn(c: ColumnDef): string {
+    return `${quoteIdent(c.name)} ${c.definition}`
+  }
+
+  private async reconcileTable(db: Db, table: string): Promise<void> {
     const desired = this.columns.get(table) ?? []
-    const info = db.query(`PRAGMA table_info(${table})`).all() as {
-      name: string
-    }[]
+    const { rows: info } = await runQuery(
+      db,
+      `SELECT column_name AS name
+       FROM information_schema.columns
+       WHERE table_schema = $1 AND table_name = $2
+       ORDER BY ordinal_position`,
+      [APP_SCHEMA, table],
+    )
     const exists = info.length > 0
 
     if (!exists) {
-      const defs = desired.map((c) => `${c.name} ${c.definition}`).join(', ')
-      db.run(`CREATE TABLE ${table} (${defs})`)
-      this.writeSnapshot(db, table, desired)
+      const defs = desired.map((c) => this.formatColumn(c)).join(', ')
+      await runQuery(db, `CREATE TABLE ${qualify(table)} (${defs})`)
+      await this.writeSnapshot(db, table, desired)
       return
     }
 
-    const actualNames = new Set(info.map((c) => c.name))
-    const snapshot = this.readSnapshot(db, table)
+    const actualNames = new Set(info.map((c) => (c as { name: string }).name))
+    const snapshot = await this.readSnapshot(db, table)
 
     const changed =
       snapshot !== null &&
@@ -130,70 +161,84 @@ export class DatabaseMigration {
         ))
 
     if (changed) {
-      this.rebuildTable(db, table, desired, actualNames)
+      await this.rebuildTable(db, table, desired, actualNames)
     } else {
       const missing = desired.filter((c) => !actualNames.has(c.name))
       try {
         for (const c of missing) {
-          db.run(`ALTER TABLE ${table} ADD COLUMN ${c.name} ${c.definition}`)
+          await runQuery(
+            db,
+            `ALTER TABLE ${qualify(table)} ADD COLUMN ${this.formatColumn(c)}`,
+          )
         }
       } catch {
-        // SQLite refuses some ADD COLUMN forms (e.g. non-constant defaults or
-        // NOT NULL without a default). Fall back to a full table rebuild.
-        this.rebuildTable(db, table, desired, actualNames)
+        await this.rebuildTable(db, table, desired, actualNames)
       }
     }
 
-    this.writeSnapshot(db, table, desired)
+    await this.writeSnapshot(db, table, desired)
   }
 
-  private rebuildTable(
-    db: Database,
+  private async rebuildTable(
+    db: Db,
     table: string,
     desired: ColumnDef[],
     actualNames: Set<string>,
-  ): void {
+  ): Promise<void> {
     const tmp = `${table}__migrate_tmp`
-    const defs = desired.map((c) => `${c.name} ${c.definition}`).join(', ')
+    const defs = desired.map((c) => this.formatColumn(c)).join(', ')
     const shared = desired
       .filter((c) => actualNames.has(c.name))
-      .map((c) => c.name)
+      .map((c) => quoteIdent(c.name))
 
-    db.run('PRAGMA foreign_keys = OFF')
-    db.transaction(() => {
-      db.run(`DROP TABLE IF EXISTS ${tmp}`)
-      db.run(`CREATE TABLE ${tmp} (${defs})`)
+    await db.query('BEGIN')
+    try {
+      await db.query('SET session_replication_role = replica')
+      await db.query(`DROP TABLE IF EXISTS ${qualify(tmp)}`)
+      await db.query(`CREATE TABLE ${qualify(tmp)} (${defs})`)
       if (shared.length > 0) {
         const cols = shared.join(', ')
-        db.run(`INSERT INTO ${tmp} (${cols}) SELECT ${cols} FROM ${table}`)
+        await db.query(
+          `INSERT INTO ${qualify(tmp)} (${cols}) SELECT ${cols} FROM ${qualify(table)}`,
+        )
       }
-      db.run(`DROP TABLE ${table}`)
-      db.run(`ALTER TABLE ${tmp} RENAME TO ${table}`)
-    })()
-    db.run('PRAGMA foreign_keys = ON')
+      await db.query(`DROP TABLE ${qualify(table)}`)
+      await db.query(
+        `ALTER TABLE ${qualify(tmp)} RENAME TO ${quoteIdent(table)}`,
+      )
+      await db.query('SET session_replication_role = DEFAULT')
+      await db.query('COMMIT')
+    } catch (err) {
+      await db.query('ROLLBACK')
+      throw err
+    }
   }
 
-  private readSnapshot(
-    db: Database,
+  private async readSnapshot(
+    db: Db,
     table: string,
-  ): Map<string, string> | null {
-    const row = db
-      .query(`SELECT columns_json FROM ${SNAPSHOT_TABLE} WHERE table_name = ?`)
-      .get(table) as { columns_json: string } | null
+  ): Promise<Map<string, string> | null> {
+    const { rows } = await runQuery(
+      db,
+      `SELECT columns_json FROM ${qualify(SNAPSHOT_TABLE)} WHERE table_name = $1`,
+      [table],
+    )
+    const row = rows[0] as { columns_json: string } | undefined
     if (!row) return null
     const parsed = JSON.parse(row.columns_json) as ColumnDef[]
     return new Map(parsed.map((c) => [c.name, c.definition]))
   }
 
-  private writeSnapshot(
-    db: Database,
+  private async writeSnapshot(
+    db: Db,
     table: string,
     desired: ColumnDef[],
-  ): void {
-    db.run(
-      `INSERT INTO ${SNAPSHOT_TABLE} (table_name, columns_json)
-       VALUES (?, ?)
-       ON CONFLICT(table_name) DO UPDATE SET columns_json = excluded.columns_json`,
+  ): Promise<void> {
+    await runQuery(
+      db,
+      `INSERT INTO ${qualify(SNAPSHOT_TABLE)} (table_name, columns_json)
+       VALUES ($1, $2)
+       ON CONFLICT(table_name) DO UPDATE SET columns_json = EXCLUDED.columns_json`,
       [table, JSON.stringify(desired)],
     )
   }

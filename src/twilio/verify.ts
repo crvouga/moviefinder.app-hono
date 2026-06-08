@@ -1,3 +1,5 @@
+import { getRuntimeEnv } from '../runtime-env'
+
 const TWILIO_VERIFY_BASE = 'https://verify.twilio.com/v2'
 
 interface TwilioCreds {
@@ -7,9 +9,9 @@ interface TwilioCreds {
 }
 
 function getCreds(): TwilioCreds {
-  const accountSid = process.env.TWILIO_ACCOUNT_SID
-  const authToken = process.env.TWILIO_AUTH_TOKEN
-  const serviceSid = process.env.TWILIO_SERVICE_SID
+  const accountSid = getRuntimeEnv('TWILIO_ACCOUNT_SID')
+  const authToken = getRuntimeEnv('TWILIO_AUTH_TOKEN')
+  const serviceSid = getRuntimeEnv('TWILIO_SERVICE_SID')
   if (!accountSid || !authToken || !serviceSid) {
     throw new Error(
       'Twilio Verify is not configured (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_SERVICE_SID required via Vault)',

@@ -1,4 +1,4 @@
-import { APEX_PLACEHOLDER_IP, WWW_HOST, WWW_PROXIED, ZONE } from './config'
+import { APEX_PLACEHOLDER_IP, ZONE } from './config'
 import { requireEnv } from './env'
 import { isDryRun, log } from './shell'
 
@@ -140,7 +140,7 @@ export async function upsertRedirectRule(): Promise<void> {
     action_parameters: {
       from_value: {
         target_url: {
-          expression: `concat("https://${WWW_HOST}", http.request.uri.path)`,
+          expression: `concat("https://www.${ZONE}", http.request.uri.path)`,
         },
         status_code: 301,
         preserve_query_string: true,
@@ -179,38 +179,15 @@ export async function upsertRedirectRule(): Promise<void> {
   }
 }
 
-/** Configure all DNS records for the deployment. */
-export async function configureDns(
-  ipv6: string | null,
-  cert: { name?: string; value?: string; type?: 'CNAME' | 'TXT' },
-): Promise<void> {
-  if (ipv6) {
-    await upsertDnsRecord({
-      type: 'AAAA',
-      name: WWW_HOST,
-      content: ipv6,
-      proxied: WWW_PROXIED,
-    })
-  } else {
-    log(STEP, 'no IPv6 available; skipping www AAAA record')
-  }
-
-  // Apex must be proxied for the redirect rule to run; traffic is intercepted
-  // by the rule before reaching the placeholder address.
+/**
+ * Configure apex DNS for the redirect rule. The www hostname is managed by the
+ * Worker's custom domain binding (wrangler routes).
+ */
+export async function configureDns(): Promise<void> {
   await upsertDnsRecord({
     type: 'A',
     name: ZONE,
     content: APEX_PLACEHOLDER_IP,
     proxied: true,
   })
-
-  if (cert.name && cert.value) {
-    // Validation records must be DNS-only so the raw value is returned.
-    await upsertDnsRecord({
-      type: cert.type ?? 'TXT',
-      name: cert.name,
-      content: cert.value,
-      proxied: false,
-    })
-  }
 }

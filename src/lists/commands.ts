@@ -1,4 +1,4 @@
-import { db } from '../db'
+import { queryOne } from '../db'
 import { appendEvent } from './events'
 import { MediaListCommand, type MemberRole, type StoredEvent } from './domain'
 
@@ -23,35 +23,38 @@ interface ListState {
   deleted_at: string | null
 }
 
-function loadList(listId: string): ListState {
-  const row = db
-    .query(`SELECT created_by, deleted_at FROM media_list WHERE list_id = ?`)
-    .get(listId) as ListState | null
+async function loadList(listId: string): Promise<ListState> {
+  const row = await queryOne<ListState>(
+    `SELECT created_by, deleted_at FROM media_list WHERE list_id = $1`,
+    [listId],
+  )
   if (!row || row.deleted_at) throw new ListNotFoundError()
   return row
 }
 
-function memberRole(listId: string, actorId: string): MemberRole | null {
-  const row = db
-    .query(
-      `SELECT role FROM media_list_member WHERE list_id = ? AND actor_id = ?`,
-    )
-    .get(listId, actorId) as { role: MemberRole } | null
+async function memberRole(
+  listId: string,
+  actorId: string,
+): Promise<MemberRole | null> {
+  const row = await queryOne<{ role: MemberRole }>(
+    `SELECT role FROM media_list_member WHERE list_id = $1 AND actor_id = $2`,
+    [listId, actorId],
+  )
   return row?.role ?? null
 }
 
 /** Any member (owner or editor) may modify the list contents. */
-function assertCanEdit(listId: string, actorId: string): void {
-  loadList(listId)
-  if (!memberRole(listId, actorId)) {
+async function assertCanEdit(listId: string, actorId: string): Promise<void> {
+  await loadList(listId)
+  if (!(await memberRole(listId, actorId))) {
     throw new ListAccessError('You are not a member of this list')
   }
 }
 
 /** Only the owner may delete the list or manage its membership. */
-function assertOwner(listId: string, actorId: string): void {
-  loadList(listId)
-  if (memberRole(listId, actorId) !== 'owner') {
+async function assertOwner(listId: string, actorId: string): Promise<void> {
+  await loadList(listId)
+  if ((await memberRole(listId, actorId)) !== 'owner') {
     throw new ListAccessError('Only the owner can perform this action')
   }
 }
@@ -62,10 +65,10 @@ function assertOwner(listId: string, actorId: string): void {
  * `case` is the handler for one command type, mapping an intent (imperative)
  * onto a fact (past-tense event).
  */
-export function handleCommand(
+export async function handleCommand(
   actorId: string,
   input: MediaListCommand,
-): StoredEvent {
+): Promise<StoredEvent> {
   const command = MediaListCommand.parse(input)
 
   switch (command.command_type) {
@@ -83,7 +86,7 @@ export function handleCommand(
     }
 
     case 'RenameList': {
-      assertCanEdit(command.list_id, actorId)
+      await assertCanEdit(command.list_id, actorId)
       return appendEvent({
         aggregateId: command.list_id,
         actorId,
@@ -92,7 +95,7 @@ export function handleCommand(
     }
 
     case 'AddMedia': {
-      assertCanEdit(command.list_id, actorId)
+      await assertCanEdit(command.list_id, actorId)
       return appendEvent({
         aggregateId: command.list_id,
         actorId,
@@ -101,7 +104,7 @@ export function handleCommand(
     }
 
     case 'RemoveMedia': {
-      assertCanEdit(command.list_id, actorId)
+      await assertCanEdit(command.list_id, actorId)
       return appendEvent({
         aggregateId: command.list_id,
         actorId,
@@ -110,7 +113,7 @@ export function handleCommand(
     }
 
     case 'ChangeOrder': {
-      assertCanEdit(command.list_id, actorId)
+      await assertCanEdit(command.list_id, actorId)
       return appendEvent({
         aggregateId: command.list_id,
         actorId,
@@ -122,7 +125,7 @@ export function handleCommand(
     }
 
     case 'AddMember': {
-      assertOwner(command.list_id, actorId)
+      await assertOwner(command.list_id, actorId)
       return appendEvent({
         aggregateId: command.list_id,
         actorId,
@@ -135,7 +138,7 @@ export function handleCommand(
     }
 
     case 'RemoveMember': {
-      assertOwner(command.list_id, actorId)
+      await assertOwner(command.list_id, actorId)
       return appendEvent({
         aggregateId: command.list_id,
         actorId,
@@ -144,7 +147,7 @@ export function handleCommand(
     }
 
     case 'DeleteList': {
-      assertOwner(command.list_id, actorId)
+      await assertOwner(command.list_id, actorId)
       return appendEvent({
         aggregateId: command.list_id,
         actorId,

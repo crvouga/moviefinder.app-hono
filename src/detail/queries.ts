@@ -1,9 +1,6 @@
-import { db } from '../db'
+import { queryOne } from '../db'
 import type { MediaItem } from '../types'
 
-export function getMediaById(id: number): MediaItem | null {
-  const row = db
-    .query(`SELECT * FROM media WHERE id = ?`)
-    .get(id) as MediaItem | null
-  return row ?? null
+export async function getMediaById(id: number): Promise<MediaItem | null> {
+  return queryOne<MediaItem>(`SELECT * FROM media WHERE id = $1`, [id])
 }

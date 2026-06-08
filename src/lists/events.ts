@@ -1,4 +1,4 @@
-import { db } from '../db'
+import { clientQuery, query, withTransaction } from '../db'
 import { LIST_NAMESPACE, MediaListEvent, type StoredEvent } from './domain'
 import { applyEvent } from './projections'
 
@@ -45,29 +45,29 @@ export interface AppendEventInput {
  * projections happen in one transaction so reads never observe a half-applied
  * event.
  */
-export function appendEvent(input: AppendEventInput): StoredEvent {
+export async function appendEvent(
+  input: AppendEventInput,
+): Promise<StoredEvent> {
   const event = MediaListEvent.parse(input.event)
 
-  // The discriminant lives in a dedicated column; the rest becomes the payload.
   const { event_type, ...payload } = event
   const eventId = crypto.randomUUID()
 
-  const tx = db.transaction(() => {
-    const row = db
-      .query(
-        `SELECT COALESCE(MAX(version), 0) AS v FROM events WHERE aggregate_id = ?`,
-      )
-      .get(input.aggregateId) as { v: number }
-    const version = row.v + 1
+  return withTransaction(async (client) => {
+    const { rows: versionRows } = await clientQuery(
+      client,
+      `SELECT COALESCE(MAX(version), 0) AS v FROM events WHERE aggregate_id = $1`,
+      [input.aggregateId],
+    )
+    const version = (versionRows[0] as { v: number }).v + 1
 
-    const inserted = db
-      .query(
-        `INSERT INTO events
+    const { rows: insertedRows } = await clientQuery(
+      client,
+      `INSERT INTO events
            (event_id, namespace, aggregate_id, event_type, payload_json, actor_id, version)
-         VALUES (?, ?, ?, ?, ?, ?, ?)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id, created_at`,
-      )
-      .get(
+      [
         eventId,
         LIST_NAMESPACE,
         input.aggregateId,
@@ -75,7 +75,9 @@ export function appendEvent(input: AppendEventInput): StoredEvent {
         JSON.stringify(payload),
         input.actorId,
         version,
-      ) as { id: number; created_at: string }
+      ],
+    )
+    const inserted = insertedRows[0] as { id: number; created_at: string }
 
     const stored: StoredEvent = {
       id: inserted.id,
@@ -89,29 +91,27 @@ export function appendEvent(input: AppendEventInput): StoredEvent {
       created_at: inserted.created_at,
     }
 
-    applyEvent(stored)
+    await applyEvent(client, stored)
     return stored
   })
-
-  return tx()
 }
 
 /** Replay the full ordered stream for one aggregate. */
-export function readEvents(aggregateId: string): StoredEvent[] {
-  const rows = db
-    .query(
-      `SELECT * FROM events
-       WHERE aggregate_id = ? AND namespace = ?
+export async function readEvents(aggregateId: string): Promise<StoredEvent[]> {
+  const rows = await query<EventRow>(
+    `SELECT * FROM events
+       WHERE aggregate_id = $1 AND namespace = $2
        ORDER BY version ASC`,
-    )
-    .all(aggregateId, LIST_NAMESPACE) as EventRow[]
+    [aggregateId, LIST_NAMESPACE],
+  )
   return rows.map(toStored)
 }
 
 /** Every list event in global insertion order, used for projection rebuilds. */
-export function readAllEvents(): StoredEvent[] {
-  const rows = db
-    .query(`SELECT * FROM events WHERE namespace = ? ORDER BY id ASC`)
-    .all(LIST_NAMESPACE) as EventRow[]
+export async function readAllEvents(): Promise<StoredEvent[]> {
+  const rows = await query<EventRow>(
+    `SELECT * FROM events WHERE namespace = $1 ORDER BY id ASC`,
+    [LIST_NAMESPACE],
+  )
   return rows.map(toStored)
 }

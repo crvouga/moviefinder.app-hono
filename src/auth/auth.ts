@@ -1,14 +1,14 @@
 import { betterAuth } from 'better-auth'
 import { phoneNumber } from 'better-auth/plugins'
-import { db } from '../db'
+import { pool } from '../db'
+import { getRuntimeEnv, requireRuntimeEnv } from '../runtime-env'
 import { checkVerification, startVerification } from '../twilio/verify'
 
-const baseURL = process.env.BETTER_AUTH_URL ?? 'http://localhost:3000'
+const baseURL = getRuntimeEnv('BETTER_AUTH_URL') ?? 'http://localhost:3000'
 
 export const auth = betterAuth({
-  // Reuse the single bun:sqlite connection so there is one DB handle.
-  database: db,
-  secret: process.env.BETTER_AUTH_SECRET,
+  database: pool,
+  secret: requireRuntimeEnv('BETTER_AUTH_SECRET'),
   baseURL,
   trustedOrigins: [
     'https://www.moviefinder.app',

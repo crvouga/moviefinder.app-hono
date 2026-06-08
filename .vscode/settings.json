@@ -6,11 +6,10 @@
     "datastar",
     "elif",
     "esac",
-    "flyctl",
     "healthcheck",
     "hono",
     "moviefinder",
-    "superfly",
+    "wrangler",
     "TMDB"
   ],
   "editor.formatOnSave": true,

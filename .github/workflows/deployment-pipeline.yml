@@ -22,59 +22,12 @@ jobs:
       - name: Typecheck
         run: bun run tc
 
-  build-and-push:
-    needs: check
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-      actions: write
-    outputs:
-      image_tag: ${{ steps.image_tag.outputs.tag }}
-
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Resolve image tag
-        id: image_tag
-        run: echo "tag=sha-$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=sha,prefix=sha-
-            type=raw,value=latest
-
-      - name: Build and push
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
   deploy:
-    needs: [check, build-and-push]
+    needs: check
     runs-on: ubuntu-latest
     permissions:
       id-token: write
       contents: read
-      packages: read
 
     steps:
       - uses: actions/checkout@v6
@@ -85,9 +38,6 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      - name: Set up flyctl
-        uses: superfly/flyctl-actions/setup-flyctl@master
-
       - name: Import secrets from Vault
         uses: hashicorp/vault-action@v3
         with:
@@ -97,9 +47,9 @@ jobs:
           role: github-actions
           jwtGithubAudience: https://secret-store.chrisvouga.dev
           secrets: |
-            secret/data/personal/prd FLY_API_TOKEN | FLY_API_TOKEN ;
             secret/data/personal/prd CLOUDFLARE_API_TOKEN | CLOUDFLARE_API_TOKEN ;
             secret/data/personal/prd CLOUDFLARE_ACCOUNT_ID | CLOUDFLARE_ACCOUNT_ID ;
+            secret/data/personal/prd DATABASE_URL | DATABASE_URL ;
             secret/data/personal/prd TMDB_API_READ_ACCESS_TOKEN | TMDB_API_READ_ACCESS_TOKEN ;
             secret/data/personal/prd OPENAI_API_KEY | OPENAI_API_KEY ;
             secret/data/personal/prd OPENAI_PROJECT_ID | OPENAI_PROJECT_ID ;
@@ -109,32 +59,20 @@ jobs:
             secret/data/personal/prd BETTER_AUTH_SECRET | BETTER_AUTH_SECRET ;
             secret/data/personal/prd BETTER_AUTH_URL | BETTER_AUTH_URL
 
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Deploy to Fly.io and configure Cloudflare
-        env:
-          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
-          GHCR_REPOSITORY: ${{ github.repository }}
+      - name: Deploy to Cloudflare Workers and configure DNS
         run: bun run deploy/deploy.ts
 
   summary:
     name: Summary
-    needs: [check, build-and-push, deploy]
+    needs: [check, deploy]
     if: always()
     runs-on: ubuntu-latest
 
     steps:
       - name: Write deployment summary
         env:
-          BUILD_RESULT: ${{ needs.build-and-push.result }}
+          CHECK_RESULT: ${{ needs.check.result }}
           DEPLOY_RESULT: ${{ needs.deploy.result }}
-          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
-          GHCR_REPOSITORY: ${{ github.repository }}
           COMMIT_SHA: ${{ github.sha }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
@@ -148,10 +86,10 @@ jobs:
             esac
           }
 
-          OVERALL="$BUILD_RESULT"
+          OVERALL="$CHECK_RESULT"
           if [ "$DEPLOY_RESULT" = "failure" ] || [ "$DEPLOY_RESULT" = "cancelled" ]; then
             OVERALL="$DEPLOY_RESULT"
-          elif [ "$BUILD_RESULT" = "success" ] && [ "$DEPLOY_RESULT" = "skipped" ]; then
+          elif [ "$CHECK_RESULT" = "success" ] && [ "$DEPLOY_RESULT" = "skipped" ]; then
             OVERALL="failure"
           fi
 
@@ -161,7 +99,6 @@ jobs:
             *) HEADER="Deployment failed" ;;
           esac
 
-          IMAGE="ghcr.io/${GHCR_REPOSITORY}:${IMAGE_TAG}"
           SHORT_SHA="${COMMIT_SHA:0:7}"
 
           cat >> "$GITHUB_STEP_SUMMARY" <<EOF
@@ -170,14 +107,12 @@ jobs:
           | | |
           | --- | --- |
           | **Commit** | [\`${SHORT_SHA}\`](${RUN_URL}) |
-          | **Container image** | \`${IMAGE}\` |
-          | **Also tagged** | \`ghcr.io/${GHCR_REPOSITORY}:latest\` |
 
           ### Pipeline
 
           | Stage | Result |
           | --- | --- |
-          | Build & push | $(status_icon "$BUILD_RESULT") ${BUILD_RESULT} |
+          | Check | $(status_icon "$CHECK_RESULT") ${CHECK_RESULT} |
           | Deploy | $(status_icon "$DEPLOY_RESULT") ${DEPLOY_RESULT} |
 
           ### Live
@@ -186,8 +121,7 @@ jobs:
           | --- | --- |
           | **Site** | https://www.moviefinder.app |
           | **Apex redirect** | https://moviefinder.app → www |
-          | **Fly app** | [moviefinder](https://fly.io/apps/moviefinder) |
-          | **Package** | [GHCR](https://github.com/${GHCR_REPOSITORY}/pkgs/container/moviefinder.app-hono) |
+          | **Worker** | moviefinder |
 
           ---
           _[View workflow run](${RUN_URL})_

@@ -1,21 +1,22 @@
-import { db } from '../db'
+import { execute } from '../db'
 import { tmdbFetch } from './client'
 import type { MediaType } from '../types'
 
-function upsertEntity(
+async function upsertEntity(
   namespace: string,
   entityType: string,
   entityId: string,
   data: unknown,
 ) {
-  db.query(
+  await execute(
     `
     INSERT INTO entities (namespace, entity_type, entity_id, data)
-    VALUES (?, ?, ?, ?)
-    ON CONFLICT(namespace, entity_type, entity_id)
-    DO UPDATE SET data = excluded.data, fetched_at = CURRENT_TIMESTAMP
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (namespace, entity_type, entity_id)
+    DO UPDATE SET data = EXCLUDED.data, fetched_at = NOW()
   `,
-  ).run(namespace, entityType, entityId, JSON.stringify(data))
+    [namespace, entityType, entityId, JSON.stringify(data)],
+  )
 }
 
 interface MultiResult {
@@ -26,7 +27,7 @@ export async function searchAndIngest(query: string) {
   const json = (await tmdbFetch('/search/multi', { query })) as MultiResult
   for (const item of json.results ?? []) {
     if (item.media_type === 'movie' || item.media_type === 'tv') {
-      upsertEntity('tmdb', item.media_type, String(item.id), item)
+      await upsertEntity('tmdb', item.media_type, String(item.id), item)
     }
   }
 }
@@ -38,14 +39,14 @@ export async function fetchDetailAndIngest(
   const json = await tmdbFetch(`/${entityType}/${tmdbId}`, {
     append_to_response: 'credits',
   })
-  upsertEntity('tmdb', entityType, tmdbId, json)
+  await upsertEntity('tmdb', entityType, tmdbId, json)
 }
 
 export async function fetchTrendingAndIngest() {
   const json = (await tmdbFetch('/trending/all/week')) as MultiResult
   for (const item of json.results ?? []) {
     if (item.media_type === 'movie' || item.media_type === 'tv') {
-      upsertEntity('tmdb', item.media_type, String(item.id), item)
+      await upsertEntity('tmdb', item.media_type, String(item.id), item)
     }
   }
 }

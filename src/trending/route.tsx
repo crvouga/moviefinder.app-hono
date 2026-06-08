@@ -20,14 +20,16 @@ trendingRoute.get('/trending', async (c) => {
     console.error('fetchTrendingAndIngest failed', err)
   }
 
-  return c.html(<TrendingPage items={getTrending()} user={c.get('user')} />)
+  return c.html(
+    <TrendingPage items={await getTrending()} user={c.get('user')} />,
+  )
 })
 
 trendingRoute.get('/trending/more', (c) =>
-  datastarResponse(c, function* () {
+  datastarResponse(c, async function* () {
     const { trendingOffset } = readSignals<{ trendingOffset?: number }>(c)
     const offset = Number(trendingOffset) || 0
-    const next = getTrending(PAGE_SIZE, offset)
+    const next = await getTrending(PAGE_SIZE, offset)
 
     if (next.length > 0) {
       const html = (<TrendingCards items={next} />).toString()
