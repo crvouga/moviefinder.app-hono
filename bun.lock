@@ -8,10 +8,10 @@
         "@neondatabase/serverless": "^1.1.0",
         "better-auth": "^1.6.11",
         "hono": "^4",
+        "kysely": "^0.28.8",
         "zod": "^4.4.3",
       },
       "devDependencies": {
-        "@cloudflare/workers-types": "^4.20260307.1",
         "@tailwindcss/cli": "^4",
         "bun-types": "latest",
         "daisyui": "^5.5.20",

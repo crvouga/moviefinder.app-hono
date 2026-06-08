@@ -1,8 +1,10 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
 import {
   Pool,
   neonConfig,
   type PoolClient,
 } from '@neondatabase/serverless'
+import { PostgresDialect } from 'kysely'
 import {
   APP_SCHEMA,
   SET_APP_SEARCH_PATH,
@@ -12,16 +14,11 @@ import { requireRuntimeEnv } from '../runtime-env'
 
 neonConfig.webSocketConstructor = WebSocket
 
-let basePool: Pool | null = null
-
-function getBasePool(): Pool {
-  if (!basePool) {
-    basePool = new Pool({
-      connectionString: requireRuntimeEnv('DATABASE_URL'),
-    })
-  }
-  return basePool
+interface RequestDb {
+  pool: Pool
 }
+
+const requestDb = new AsyncLocalStorage<RequestDb>()
 
 function wrapPool(pool: Pool): Pool {
   return new Proxy(pool, {
@@ -50,27 +47,49 @@ function wrapPool(pool: Pool): Pool {
   }) as Pool
 }
 
-let wrappedPool: Pool | null = null
-
-function getWrappedPool(): Pool {
-  if (!wrappedPool) {
-    wrappedPool = wrapPool(getBasePool())
+function getRequestPool(): Pool {
+  const store = requestDb.getStore()
+  if (!store) {
+    throw new Error('Database used outside an active request')
   }
-  return wrappedPool
+  return store.pool
+}
+
+/**
+ * Run handler code with a Pool scoped to this Worker request. WebSocket
+ * connections must not be shared across requests on Cloudflare Workers.
+ */
+export async function withRequestDb<T>(fn: () => Promise<T>): Promise<T> {
+  const basePool = new Pool({
+    connectionString: requireRuntimeEnv('DATABASE_URL'),
+  })
+  const pool = wrapPool(basePool)
+  try {
+    return await requestDb.run({ pool }, fn)
+  } finally {
+    await basePool.end()
+  }
+}
+
+/** Kysely dialect for Better Auth (explicit type avoids adapter auto-detection on Proxies). */
+export function createAuthDatabase() {
+  return {
+    dialect: new PostgresDialect({ pool }),
+    type: 'postgres' as const,
+  }
 }
 
 /** App-scoped pool: every connection uses search_path = moviefinder_app_hono only. */
 export const pool = new Proxy({} as Pool, {
   get(_target, prop, receiver) {
-    const p = getWrappedPool()
+    const p = getRequestPool()
     const value = Reflect.get(p, prop, receiver)
     return typeof value === 'function'
       ? (value as (...args: unknown[]) => unknown).bind(p)
       : value
   },
-  // better-auth detects postgres pools via `"connect" in database`.
   has(_target, prop) {
-    return prop in getWrappedPool()
+    return prop in getRequestPool()
   },
 })
 

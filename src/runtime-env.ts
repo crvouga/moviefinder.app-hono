@@ -5,9 +5,13 @@ let current: EnvRecord =
     ? (process.env as EnvRecord)
     : {}
 
-/** Workers pass bindings per request; Bun uses process.env at import time. */
+/** Workers pass bindings per request; merge so .dev.vars / secrets are not wiped by ASSETS. */
 export function setRuntimeEnv(env: EnvRecord): void {
-  current = env
+  const merged: EnvRecord = { ...current }
+  for (const [key, value] of Object.entries(env)) {
+    if (typeof value === 'string') merged[key] = value
+  }
+  current = merged
 }
 
 export function getRuntimeEnv(name: string): string | undefined {

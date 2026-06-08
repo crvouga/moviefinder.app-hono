@@ -2,6 +2,42 @@ node_modules/
 public/styles.css
 public/client.js
 .env
+.dev.vars
 .vault-token
 init-output.json
 .DS_Store
+.wrangler/
+# Bun
+.bun-*
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+bun-debug.log*
+
+# OS / Editor junk
+Thumbs.db
+ehthumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Build output
+dist/
+build/
+out/
+.next/
+.cache/
+.vercel/
+
+# Test outputs
+coverage/
+*.lcov
+
+# Misc
+*.tgz
+*.zip

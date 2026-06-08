@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { auth } from './auth/auth'
+import { getAuth } from './auth/auth'
 import { authRoute } from './auth/route'
 import type { AppEnv } from './auth/types'
 import { searchRoute } from './search/route'
@@ -13,12 +13,14 @@ export function createApp(): Hono<AppEnv> {
   app.get('/health', (c) => c.text('ok'))
 
   // Better Auth owns everything under /api/auth/* (sign-in, OTP, sessions, sign-out).
-  app.on(['POST', 'GET'], '/api/auth/*', (c) => auth.handler(c.req.raw))
+  app.on(['POST', 'GET'], '/api/auth/*', (c) => getAuth().handler(c.req.raw))
 
   // Populate the current user on every page request (registered after the auth
   // handler so it does not run for /api/auth/*).
   app.use('*', async (c, next) => {
-    const session = await auth.api.getSession({ headers: c.req.raw.headers })
+    const session = await getAuth().api.getSession({
+      headers: c.req.raw.headers,
+    })
     c.set('user', session?.user ?? null)
     await next()
   })

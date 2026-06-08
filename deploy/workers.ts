@@ -16,11 +16,6 @@ export async function buildAssets(): Promise<void> {
   await run(STEP, ['bun', 'run', 'build'])
 }
 
-/** Apply database migrations against Neon (runs outside the Worker). */
-export async function runMigrations(): Promise<void> {
-  await run(STEP, ['bun', 'scripts/migrate.ts'])
-}
-
 /**
  * Upload runtime secrets to the Worker. Values are written to a temp JSON file
  * so they never appear in argv.

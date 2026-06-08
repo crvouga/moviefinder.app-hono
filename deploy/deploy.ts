@@ -1,9 +1,10 @@
 /**
  * Deterministic, idempotent deploy orchestrator.
  *
- * Builds assets, runs DB migrations, deploys to Cloudflare Workers (hosting
- * www.moviefinder.app), and configures Cloudflare DNS plus an apex -> www 301
- * redirect. All secrets come from the environment (inject via `vault run`).
+ * Builds assets, deploys to Cloudflare Workers (hosting www.moviefinder.app),
+ * and configures Cloudflare DNS plus an apex -> www 301 redirect. DB migrations
+ * run in CI before this script (see deployment-pipeline.yml). Secrets come
+ * from the environment (inject via `vault run`).
  *
  * Flags:
  *   --plan              Print intended actions without mutating anything.
@@ -28,7 +29,6 @@ function parseArgs(argv: string[]): { dryRun: boolean; scope: Scope } {
 
 async function runWorker(): Promise<void> {
   await workers.buildAssets()
-  await workers.runMigrations()
   await workers.setRuntimeSecrets(collectRuntimeSecrets())
   await workers.deploy()
 }

@@ -5,7 +5,7 @@ import {
   assertAppScopedSql,
   qualify,
   quoteIdent,
-} from '../db/schema'
+} from '../../src/db/schema'
 
 interface ColumnDef {
   name: string

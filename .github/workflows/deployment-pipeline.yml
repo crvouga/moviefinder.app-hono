@@ -78,6 +78,9 @@ jobs:
             secret/data/personal/prd BETTER_AUTH_SECRET | BETTER_AUTH_SECRET ;
             secret/data/personal/prd BETTER_AUTH_URL | BETTER_AUTH_URL
 
+      - name: Run database migrations
+        run: bun scripts/migrate.ts
+
       - name: Deploy to Cloudflare Workers and configure DNS
         run: bun run deploy/deploy.ts
 

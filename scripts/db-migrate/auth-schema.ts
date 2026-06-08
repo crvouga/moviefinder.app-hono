@@ -1,9 +1,8 @@
-import type { DatabaseMigration } from '../db-migrate/database-migration'
+import type { DatabaseMigration } from './database-migration'
 
 /**
  * Better Auth core tables (user, session, account, verification) plus the
- * phoneNumber plugin fields, registered in the app's migration DSL so the whole
- * schema is created by the single startup migrate() pass.
+ * phoneNumber plugin fields.
  *
  * Mirrors the column types Better Auth's Kysely PostgreSQL adapter would generate
  * (string -> TEXT, boolean -> BOOLEAN, date -> TIMESTAMPTZ, references -> TEXT FK,

@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { auth } from './auth'
+import { getAuth } from './auth'
 import { LoginPage } from './login-page'
 import { VerifyPage } from './verify-page'
 import type { AppEnv } from './types'
@@ -36,7 +36,7 @@ authRoute.post('/login', async (c) => {
     return c.html(<LoginPage error="Enter your phone number." />, 400)
   }
   try {
-    await auth.api.sendPhoneNumberOTP({
+    await getAuth().api.sendPhoneNumberOTP({
       body: { phoneNumber },
       headers: c.req.raw.headers,
     })
@@ -74,7 +74,7 @@ authRoute.post('/login/verify', async (c) => {
     )
   }
   try {
-    const { headers } = await auth.api.verifyPhoneNumber({
+    const { headers } = await getAuth().api.verifyPhoneNumber({
       body: { phoneNumber, code },
       headers: c.req.raw.headers,
       returnHeaders: true,
@@ -97,7 +97,7 @@ authRoute.post('/login/verify', async (c) => {
 
 authRoute.post('/logout', async (c) => {
   try {
-    const { headers } = await auth.api.signOut({
+    const { headers } = await getAuth().api.signOut({
       headers: c.req.raw.headers,
       returnHeaders: true,
     })

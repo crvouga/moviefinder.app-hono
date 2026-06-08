@@ -5,12 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vault run -- bun run dev:run",
-    "dev:run": "bun run build && bun run --hot src/server.tsx",
-    "dev:worker": "vault run -- bun run build && wrangler dev",
+    "dev:run": "bun run build && bun scripts/write-dev-vars.ts && wrangler dev",
     "build:css": "bunx @tailwindcss/cli -i src/styles-input.css -o public/styles.css --minify",
     "build": "bun run build:css",
-    "start": "vault run -- bun run start:run",
-    "start:run": "bun run build && bun src/server.tsx",
+    "migrate": "vault run -- bun scripts/migrate.ts",
     "deploy": "vault run -- bun run deploy/deploy.ts",
     "deploy:plan": "vault run -- bun run deploy/deploy.ts --plan",
     "deploy:worker": "vault run -- bun run deploy/deploy.ts --only=worker",
@@ -27,6 +25,7 @@
     "@neondatabase/serverless": "^1.1.0",
     "better-auth": "^1.6.11",
     "hono": "^4",
+    "kysely": "^0.28.8",
     "zod": "^4.4.3"
   },
   "devDependencies": {
