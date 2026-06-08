@@ -39,6 +39,24 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # Vault on Fly.io can cold-start sealed; vault-action does not retry login.
+      - name: Wait for Vault to be ready
+        run: |
+          url="https://secret-store.chrisvouga.dev/v1/sys/health?sealedcode=200&uninitcode=200&standbycode=200"
+          for attempt in $(seq 1 36); do
+            response=$(curl -fsS "$url" 2>/dev/null || true)
+            if [ -n "$response" ] && echo "$response" | jq -e '.sealed == false' >/dev/null 2>&1; then
+              echo "Vault is unsealed and ready"
+              exit 0
+            fi
+            sealed=$(echo "$response" | jq -r '.sealed // empty' 2>/dev/null)
+            if [ -z "$sealed" ]; then sealed="unreachable"; fi
+            echo "Vault not ready (sealed=${sealed}, attempt ${attempt}/36), waiting 5s..."
+            sleep 5
+          done
+          echo "Vault did not become ready within 3 minutes"
+          exit 1
+
       - name: Import secrets from Vault
         uses: hashicorp/vault-action@v3
         with:
