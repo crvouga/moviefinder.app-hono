@@ -4,7 +4,7 @@ export function getAccessToken(): string {
   const token = process.env.TMDB_API_READ_ACCESS_TOKEN
   if (!token) {
     throw new Error(
-      'TMDB_API_READ_ACCESS_TOKEN is not set (provide it via Doppler)',
+      'TMDB_API_READ_ACCESS_TOKEN is not set (provide it via Vault)',
     )
   }
   return token

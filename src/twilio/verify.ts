@@ -12,7 +12,7 @@ function getCreds(): TwilioCreds {
   const serviceSid = process.env.TWILIO_SERVICE_SID
   if (!accountSid || !authToken || !serviceSid) {
     throw new Error(
-      'Twilio Verify is not configured (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_SERVICE_SID required via Doppler)',
+      'Twilio Verify is not configured (TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_SERVICE_SID required via Vault)',
     )
   }
   return { accountSid, authToken, serviceSid }

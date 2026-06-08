@@ -3,7 +3,7 @@
  *
  * Ships the GHCR image to Fly.io (hosting www.moviefinder.app) and configures
  * Cloudflare DNS plus an apex -> www 301 redirect. All secrets come from the
- * environment (inject via `doppler run`).
+ * environment (inject via `vault run`).
  *
  * Flags:
  *   --plan          Print intended actions without mutating anything.

@@ -1,6 +1,6 @@
 /**
  * Static deployment configuration. Everything environment-specific comes from
- * Doppler-injected env vars (see env.ts); this file holds only stable constants.
+ * Vault-injected env vars (see env.ts); this file holds only stable constants.
  */
 
 export const APP_NAME = 'moviefinder'
@@ -31,10 +31,9 @@ export const WWW_PROXIED = true
 export const APEX_PLACEHOLDER_IP = '192.0.2.1'
 
 /**
- * Doppler secrets that are part of the application runtime and get pushed to
- * Fly via `fly secrets set`. Deploy-time tooling creds (FLY_API_TOKEN,
- * CLOUDFLARE_*) are intentionally excluded so they never reach the app.
- * Add more names here to expose them to the running app.
+ * Runtime secrets (from the allowlist) that get pushed to Fly via
+ * `fly secrets set`. Deploy-time tooling creds (FLY_API_TOKEN, CLOUDFLARE_*)
+ * are intentionally excluded so they never reach the app.
  */
 export const RUNTIME_SECRETS = [
   'TMDB_API_READ_ACCESS_TOKEN',

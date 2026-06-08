@@ -4,7 +4,7 @@ export function requireEnv(name: string): string {
   const value = process.env[name]
   if (!value) {
     throw new Error(
-      `Missing required environment variable: ${name} (provide it via Doppler)`,
+      `Missing required environment variable: ${name} (provide it via Vault)`,
     )
   }
   return value
@@ -15,7 +15,7 @@ export function validateDeployEnv(): void {
   const missing = REQUIRED_DEPLOY_ENV.filter((name) => !process.env[name])
   if (missing.length > 0) {
     throw new Error(
-      `Missing required deploy env vars: ${missing.join(', ')}. Run via \`doppler run\`.`,
+      `Missing required deploy env vars: ${missing.join(', ')}. Run via \`vault run\`.`,
     )
   }
 }
@@ -32,7 +32,7 @@ export function collectRuntimeSecrets(): Record<string, string> {
     if (value) {
       secrets[name] = value
     } else {
-      console.warn(`[env] runtime secret ${name} not set in Doppler; skipping`)
+      console.warn(`[env] runtime secret ${name} not set in Vault; skipping`)
     }
   }
   return secrets

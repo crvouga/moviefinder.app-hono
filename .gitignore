@@ -6,4 +6,6 @@ public/client.js
 *.db-wal
 data/
 .env
+.vault-token
+init-output.json
 .DS_Store
