@@ -5,6 +5,9 @@
 
 export const APP_NAME = 'moviefinder'
 
+export const FLY_APP = 'moviefinder'
+export const FLY_HOSTNAME = 'moviefinder.fly.dev'
+
 export const ZONE = 'moviefinder.app'
 export const WWW_HOST = `www.${ZONE}`
 
@@ -19,9 +22,8 @@ export const WWW_PROXIED = true
 export const APEX_PLACEHOLDER_IP = '192.0.2.1'
 
 /**
- * Runtime secrets (from the allowlist) that get pushed to the Worker via
- * `wrangler secret bulk`. Deploy-time tooling creds (CLOUDFLARE_*) are
- * intentionally excluded so they never reach the app.
+ * Runtime secrets (from the allowlist) pushed to Fly via `fly secrets import`.
+ * Deploy-time tooling creds are intentionally excluded so they never reach the app.
  */
 export const RUNTIME_SECRETS = [
   'DATABASE_URL',
@@ -37,6 +39,7 @@ export const RUNTIME_SECRETS = [
 
 /** Env vars required by the deploy tooling itself (validated up front). */
 export const REQUIRED_DEPLOY_ENV = [
+  'FLY_API_TOKEN',
   'CLOUDFLARE_API_TOKEN',
   'CLOUDFLARE_ACCOUNT_ID',
 ] as const

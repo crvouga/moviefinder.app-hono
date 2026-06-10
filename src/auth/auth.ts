@@ -44,7 +44,7 @@ type AuthInstance = ReturnType<typeof createAuth>
 
 let authInstance: AuthInstance | null = null
 
-/** Lazily initialized after Worker env bindings are set (see worker.ts). */
+/** Lazily initialized after runtime env is available. */
 export function getAuth(): AuthInstance {
   authInstance ??= createAuth()
   return authInstance

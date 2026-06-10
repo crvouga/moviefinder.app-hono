@@ -5,7 +5,7 @@ let current: EnvRecord =
     ? (process.env as EnvRecord)
     : {}
 
-/** Workers pass bindings per request; merge so .dev.vars / secrets are not wiped by ASSETS. */
+/** Merge per-request env overrides (e.g. test doubles) into the process environment. */
 export function setRuntimeEnv(env: EnvRecord): void {
   const merged: EnvRecord = { ...current }
   for (const [key, value] of Object.entries(env)) {

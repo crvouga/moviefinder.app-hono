@@ -1,4 +1,4 @@
-import { APEX_PLACEHOLDER_IP, ZONE } from './config'
+import { APEX_PLACEHOLDER_IP, FLY_HOSTNAME, WWW_HOST, ZONE } from './config'
 import { requireEnv } from './env'
 import { isDryRun, log } from './shell'
 
@@ -179,9 +179,18 @@ export async function upsertRedirectRule(): Promise<void> {
   }
 }
 
+/** Point www at Fly.io (proxied through Cloudflare). */
+export async function configureWwwDns(): Promise<void> {
+  await upsertDnsRecord({
+    type: 'CNAME',
+    name: WWW_HOST,
+    content: FLY_HOSTNAME,
+    proxied: true,
+  })
+}
+
 /**
- * Configure apex DNS for the redirect rule. The www hostname is managed by the
- * Worker's custom domain binding (wrangler routes).
+ * Configure apex DNS for the redirect rule and www CNAME for Fly.io hosting.
  */
 export async function configureDns(): Promise<void> {
   await upsertDnsRecord({
@@ -190,4 +199,5 @@ export async function configureDns(): Promise<void> {
     content: APEX_PLACEHOLDER_IP,
     proxied: true,
   })
+  await configureWwwDns()
 }

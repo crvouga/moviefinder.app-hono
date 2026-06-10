@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ghcr.io/crvouga/moviefinder.app-hono
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -29,6 +33,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
+      packages: write
 
     steps:
       - uses: actions/checkout@v6
@@ -66,6 +71,7 @@ jobs:
           role: github-actions
           jwtGithubAudience: https://secret-store.chrisvouga.dev
           secrets: |
+            secret/data/personal/prd FLY_API_TOKEN | FLY_API_TOKEN ;
             secret/data/personal/prd CLOUDFLARE_API_TOKEN | CLOUDFLARE_API_TOKEN ;
             secret/data/personal/prd CLOUDFLARE_ACCOUNT_ID | CLOUDFLARE_ACCOUNT_ID ;
             secret/data/personal/prd DATABASE_URL | DATABASE_URL ;
@@ -81,7 +87,28 @@ jobs:
       - name: Run database migrations
         run: bun scripts/migrate.ts
 
-      - name: Deploy to Cloudflare Workers and configure DNS
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:latest
+
+      - name: Set up Flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io and configure DNS
+        env:
+          DEPLOY_IMAGE: ${{ env.IMAGE_NAME }}:${{ github.sha }}
         run: bun run deploy/deploy.ts
 
   summary:
@@ -143,7 +170,8 @@ jobs:
           | --- | --- |
           | **Site** | https://www.moviefinder.app |
           | **Apex redirect** | https://moviefinder.app → www |
-          | **Worker** | moviefinder |
+          | **Fly app** | moviefinder |
+          | **Image** | ghcr.io/crvouga/moviefinder.app-hono:${SHORT_SHA} |
 
           ---
           _[View workflow run](${RUN_URL})_

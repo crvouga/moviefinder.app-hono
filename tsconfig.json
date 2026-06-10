@@ -11,5 +11,5 @@
     "verbatimModuleSyntax": true,
     "noUncheckedIndexedAccess": true
   },
-  "include": ["src", "scripts", "deploy", "worker-configuration.d.ts"]
+  "include": ["src", "scripts", "deploy"]
 }

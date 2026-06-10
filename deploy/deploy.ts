@@ -1,36 +1,45 @@
 /**
  * Deterministic, idempotent deploy orchestrator.
  *
- * Builds assets, deploys to Cloudflare Workers (hosting www.moviefinder.app),
+ * Builds assets, deploys a Docker image to Fly.io (hosting www.moviefinder.app),
  * and configures Cloudflare DNS plus an apex -> www 301 redirect. DB migrations
  * run in CI before this script (see deployment-pipeline.yml). Secrets come
  * from the environment (inject via `vault run`).
  *
  * Flags:
  *   --plan              Print intended actions without mutating anything.
- *   --only=worker       Run only the Workers deploy steps.
+ *   --only=fly          Run only the Fly.io deploy steps.
  *   --only=cloudflare   Run only the Cloudflare DNS steps.
+ *
+ * Env:
+ *   DEPLOY_IMAGE        Pre-built image tag (required for fly scope).
  */
 import { collectRuntimeSecrets, validateDeployEnv } from './env'
 import * as cloudflare from './cloudflare'
-import * as workers from './workers'
+import * as fly from './fly'
 import { log, setDryRun } from './shell'
 
-type Scope = 'all' | 'worker' | 'cloudflare'
+type Scope = 'all' | 'fly' | 'cloudflare'
 
 function parseArgs(argv: string[]): { dryRun: boolean; scope: Scope } {
   const dryRun = argv.includes('--plan') || argv.includes('--dry-run')
   const onlyArg = argv.find((a) => a.startsWith('--only='))
   const only = onlyArg?.split('=')[1]
   const scope: Scope =
-    only === 'worker' || only === 'cloudflare' ? only : 'all'
+    only === 'fly' || only === 'cloudflare' ? only : 'all'
   return { dryRun, scope }
 }
 
-async function runWorker(): Promise<void> {
-  await workers.buildAssets()
-  await workers.setRuntimeSecrets(collectRuntimeSecrets())
-  await workers.deploy()
+async function runFly(): Promise<void> {
+  const image = process.env.DEPLOY_IMAGE
+  if (!image) {
+    throw new Error(
+      'DEPLOY_IMAGE is required (e.g. ghcr.io/crvouga/moviefinder.app-hono:latest)',
+    )
+  }
+  await fly.buildAssets()
+  await fly.setRuntimeSecrets(collectRuntimeSecrets())
+  await fly.deploy(image)
 }
 
 async function main(): Promise<void> {
@@ -40,8 +49,8 @@ async function main(): Promise<void> {
 
   log('deploy', `starting (scope=${scope}${dryRun ? ', plan-only' : ''})`)
 
-  if (scope === 'all' || scope === 'worker') {
-    await runWorker()
+  if (scope === 'all' || scope === 'fly') {
+    await runFly()
   }
 
   if (scope === 'all' || scope === 'cloudflare') {

@@ -5,20 +5,20 @@
   "type": "module",
   "scripts": {
     "dev": "vault run -- bun run dev:run",
-    "dev:run": "bun run build && bun scripts/write-dev-vars.ts && wrangler dev",
+    "dev:run": "bun run build && PORT=8787 bun run src/server.ts",
+    "start": "bun run src/server.ts",
     "build:css": "bunx @tailwindcss/cli -i src/styles-input.css -o public/styles.css --minify",
     "build": "bun run build:css",
     "migrate": "vault run -- bun scripts/migrate.ts",
     "deploy": "vault run -- bun run deploy/deploy.ts",
     "deploy:plan": "vault run -- bun run deploy/deploy.ts --plan",
-    "deploy:worker": "vault run -- bun run deploy/deploy.ts --only=worker",
+    "deploy:fly": "vault run -- bun run deploy/deploy.ts --only=fly",
     "deploy:dns": "vault run -- bun run deploy/deploy.ts --only=cloudflare",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint:filenames": "bun scripts/check-kebab-case.ts",
     "lint": "bun run format:check && bun run lint:filenames && bun run tc",
     "tc": "bunx tsc --noEmit",
-    "types": "wrangler types",
     "gh": "open https://github.com/crvouga/moviefinder.app-hono.git"
   },
   "dependencies": {
@@ -33,7 +33,6 @@
     "bun-types": "latest",
     "daisyui": "^5.5.20",
     "prettier": "^3.8.3",
-    "tailwindcss": "^4",
-    "wrangler": "^4.69.0"
+    "tailwindcss": "^4"
   }
 }

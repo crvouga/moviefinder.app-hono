@@ -55,20 +55,22 @@ function getRequestPool(): Pool {
   return store.pool
 }
 
-/**
- * Run handler code with a Pool scoped to this Worker request. WebSocket
- * connections must not be shared across requests on Cloudflare Workers.
- */
-export async function withRequestDb<T>(fn: () => Promise<T>): Promise<T> {
-  const basePool = new Pool({
-    connectionString: requireRuntimeEnv('DATABASE_URL'),
-  })
-  const pool = wrapPool(basePool)
-  try {
-    return await requestDb.run({ pool }, fn)
-  } finally {
-    await basePool.end()
+let sharedPool: Pool | null = null
+
+function getSharedPool(): Pool {
+  if (!sharedPool) {
+    sharedPool = wrapPool(
+      new Pool({
+        connectionString: requireRuntimeEnv('DATABASE_URL'),
+      }),
+    )
   }
+  return sharedPool
+}
+
+/** Bind the shared pool to this request via AsyncLocalStorage for app-scoped queries. */
+export async function withRequestDb<T>(fn: () => Promise<T>): Promise<T> {
+  return requestDb.run({ pool: getSharedPool() }, fn)
 }
 
 /** Kysely dialect for Better Auth (explicit type avoids adapter auto-detection on Proxies). */

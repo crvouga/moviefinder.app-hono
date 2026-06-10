@@ -1,4 +1,5 @@
 import { Hono } from 'hono'
+import { serveStatic } from 'hono/bun'
 import { getAuth } from './auth/auth'
 import { authRoute } from './auth/route'
 import type { AppEnv } from './auth/types'
@@ -11,6 +12,9 @@ export function createApp(): Hono<AppEnv> {
   const app = new Hono<AppEnv>()
 
   app.get('/health', (c) => c.text('ok'))
+
+  app.use('/styles.css', serveStatic({ root: './public' }))
+  app.use('/client.js', serveStatic({ root: './public' }))
 
   // Better Auth owns everything under /api/auth/* (sign-in, OTP, sessions, sign-out).
   app.on(['POST', 'GET'], '/api/auth/*', (c) => getAuth().handler(c.req.raw))
