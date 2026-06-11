@@ -1,8 +1,9 @@
+# Runtime config for Fly Machines. The deployable artifact is a pre-built OCI
+# image (see CONTAINER_IMAGE_REPO in deploy/config.ts); CI builds and pushes it,
+# then deploy/fly.ts promotes that tag via `fly deploy --image`.
+
 app = "chrisvouga-moviefinder"
 primary_region = "iad"
-
-[build]
-  image = "ghcr.io/crvouga/moviefinder.app-hono:latest"
 
 [http_service]
   internal_port = 8080

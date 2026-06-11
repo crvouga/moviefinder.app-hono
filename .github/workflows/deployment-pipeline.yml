@@ -94,7 +94,8 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push Docker image
+      - name: Build and push container image
+        id: image
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -106,9 +107,9 @@ jobs:
       - name: Set up Flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Deploy to Fly.io and configure DNS
+      - name: Promote image to Fly.io and configure DNS
         env:
-          DEPLOY_IMAGE: ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          DEPLOY_IMAGE: ${{ env.IMAGE_NAME }}@${{ steps.image.outputs.digest }}
         run: bun run deploy/deploy.ts
 
   summary:

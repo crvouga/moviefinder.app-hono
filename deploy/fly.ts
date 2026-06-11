@@ -1,7 +1,12 @@
 import { mkdir, writeFile, rm, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { FLY_APP, FLY_REGION, WWW_HOST } from './config'
+import {
+  CONTAINER_IMAGE_REPO,
+  FLY_APP,
+  FLY_REGION,
+  WWW_HOST,
+} from './config'
 import { captureJson, isDryRun, log, run } from './shell'
 
 const STEP = 'fly'
@@ -15,6 +20,17 @@ function flyCmd(...args: string[]): string[] {
 function certHostname(entry: Record<string, unknown>): string | undefined {
   const value = entry.Hostname ?? entry.hostname
   return typeof value === 'string' ? value : undefined
+}
+
+/** Require a fully-qualified image ref that was built and pushed out-of-band. */
+export function assertRegistryImage(image: string): void {
+  const tagRef = `${CONTAINER_IMAGE_REPO}:`
+  const digestRef = `${CONTAINER_IMAGE_REPO}@`
+  if (!image.startsWith(tagRef) && !image.startsWith(digestRef)) {
+    throw new Error(
+      `DEPLOY_IMAGE must reference ${CONTAINER_IMAGE_REPO} by tag or digest (got ${image})`,
+    )
+  }
 }
 
 /** Create the Fly app if it does not exist yet (idempotent). */
@@ -59,20 +75,16 @@ export async function ensureCertificate(hostname: string): Promise<void> {
   await run(STEP, flyCmd('certs', 'add', hostname, '-a', FLY_APP))
 }
 
-/** Ensure Fly app and TLS cert exist before secrets or deploy steps. */
+/** Ensure Fly app and TLS cert exist before secrets or image promotion. */
 export async function ensureAppReady(): Promise<void> {
   await ensureApp()
   await ensureCertificate(WWW_HOST)
 }
 
-/** Build CSS and other assets before deploying the container. */
-export async function buildAssets(): Promise<void> {
-  await run(STEP, ['bun', 'run', 'build'])
-}
-
 /**
  * Upload runtime secrets to Fly. Values are written to a temp file and imported
- * via stdin so they never appear in argv.
+ * via stdin so they never appear in argv. Uses --stage so secrets are not
+ * deployed until the registry image is promoted.
  */
 export async function setRuntimeSecrets(
   secrets: Record<string, string>,
@@ -95,10 +107,11 @@ export async function setRuntimeSecrets(
   await writeFile(file, `${lines.join('\n')}\n`)
   try {
     const content = await readFile(file, 'utf8')
-    log(STEP, `${FLYCTL_BIN} secrets import -a ${FLY_APP}`)
-    const proc = Bun.spawn([FLYCTL_BIN, 'secrets', 'import', '-a', FLY_APP], {
-      stdin: Buffer.from(content),
-    })
+    log(STEP, `${FLYCTL_BIN} secrets import --stage -a ${FLY_APP}`)
+    const proc = Bun.spawn(
+      [FLYCTL_BIN, 'secrets', 'import', '--stage', '-a', FLY_APP],
+      { stdin: Buffer.from(content) },
+    )
     const exitCode = await proc.exited
     if (exitCode !== 0) {
       throw new Error(`${FLYCTL_BIN} secrets import exited with code ${exitCode}`)
@@ -108,8 +121,13 @@ export async function setRuntimeSecrets(
   }
 }
 
-/** Deploy a pre-built image to Fly.io. */
-export async function deploy(image: string): Promise<void> {
+/**
+ * Promote a pre-built registry image to Fly Machines. Does not build locally or
+ * on Fly — the image must already exist in the registry (CI builds and pushes).
+ */
+export async function promoteImage(image: string): Promise<void> {
+  assertRegistryImage(image)
+  log(STEP, `promote registry image ${image}`)
   await run(STEP, [
     ...flyCmd(
       'deploy',

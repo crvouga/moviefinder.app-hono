@@ -1,7 +1,7 @@
 /**
  * Deterministic, idempotent deploy orchestrator.
  *
- * Builds assets, deploys a Docker image to Fly.io (hosting www.moviefinder.app),
+ * Promotes a pre-built container image to Fly.io (hosting www.moviefinder.app),
  * and configures Cloudflare DNS plus an apex -> www 301 redirect. DB migrations
  * run in CI before this script (see deployment-pipeline.yml). Secrets come
  * from the environment (inject via `vault run`).
@@ -12,7 +12,7 @@
  *   --only=cloudflare   Run only the Cloudflare DNS steps.
  *
  * Env:
- *   DEPLOY_IMAGE        Pre-built image tag (required for fly scope).
+ *   DEPLOY_IMAGE        Pushed OCI image ref (required for fly scope; built in CI).
  */
 import { collectRuntimeSecrets, validateDeployEnv } from './env'
 import * as cloudflare from './cloudflare'
@@ -37,10 +37,10 @@ async function runFly(): Promise<void> {
       'DEPLOY_IMAGE is required (e.g. ghcr.io/crvouga/moviefinder.app-hono:latest)',
     )
   }
+  fly.assertRegistryImage(image)
   await fly.ensureAppReady()
-  await fly.buildAssets()
   await fly.setRuntimeSecrets(collectRuntimeSecrets())
-  await fly.deploy(image)
+  await fly.promoteImage(image)
 }
 
 async function main(): Promise<void> {
