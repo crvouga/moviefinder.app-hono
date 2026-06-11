@@ -1,4 +1,4 @@
-app = "moviefinder"
+app = "chrisvouga-moviefinder"
 primary_region = "iad"
 
 [build]

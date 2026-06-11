@@ -5,8 +5,9 @@
 
 export const APP_NAME = 'moviefinder'
 
-export const FLY_APP = 'moviefinder'
-export const FLY_HOSTNAME = 'moviefinder.fly.dev'
+export const FLY_PREFIX = 'chrisvouga-'
+export const FLY_APP = `${FLY_PREFIX}${APP_NAME}`
+export const FLY_HOSTNAME = `${FLY_APP}.fly.dev`
 /** Matches `primary_region` in fly.toml (used when provisioning a new app). */
 export const FLY_REGION = 'iad'
 

@@ -170,7 +170,7 @@ jobs:
           | --- | --- |
           | **Site** | https://www.moviefinder.app |
           | **Apex redirect** | https://moviefinder.app → www |
-          | **Fly app** | moviefinder |
+          | **Fly app** | chrisvouga-moviefinder |
           | **Image** | ghcr.io/crvouga/moviefinder.app-hono:${SHORT_SHA} |
 
           ---
