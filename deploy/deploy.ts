@@ -37,6 +37,7 @@ async function runFly(): Promise<void> {
       'DEPLOY_IMAGE is required (e.g. ghcr.io/crvouga/moviefinder.app-hono:latest)',
     )
   }
+  await fly.ensureAppReady()
   await fly.buildAssets()
   await fly.setRuntimeSecrets(collectRuntimeSecrets())
   await fly.deploy(image)

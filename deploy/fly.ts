@@ -1,14 +1,68 @@
 import { mkdir, writeFile, rm, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { FLY_APP } from './config'
-import { isDryRun, log, run } from './shell'
+import { FLY_APP, FLY_REGION, WWW_HOST } from './config'
+import { captureJson, isDryRun, log, run } from './shell'
 
 const STEP = 'fly'
 const FLYCTL_BIN = process.env.FLYCTL_BIN ?? 'flyctl'
+const FLY_CONFIG = join(import.meta.dir, '..', 'fly.toml')
 
 function flyCmd(...args: string[]): string[] {
   return [FLYCTL_BIN, ...args]
+}
+
+function certHostname(entry: Record<string, unknown>): string | undefined {
+  const value = entry.Hostname ?? entry.hostname
+  return typeof value === 'string' ? value : undefined
+}
+
+/** Create the Fly app if it does not exist yet (idempotent). */
+export async function ensureApp(): Promise<void> {
+  const existing = await captureJson<Record<string, unknown>>(
+    flyCmd('apps', 'show', FLY_APP, '--json'),
+  )
+  if (existing) {
+    log(STEP, `app ${FLY_APP} exists`)
+    return
+  }
+
+  log(STEP, `create app ${FLY_APP}`)
+  if (isDryRun()) {
+    log(STEP, '(dry-run: skipped)')
+    return
+  }
+
+  const createArgs = flyCmd('apps', 'create', FLY_APP, '--yes')
+  const org = process.env.FLY_ORG
+  if (org) createArgs.push('-o', org)
+  await run(STEP, createArgs)
+}
+
+/** Request a TLS certificate for the custom hostname if missing (idempotent). */
+export async function ensureCertificate(hostname: string): Promise<void> {
+  const certs =
+    (await captureJson<Record<string, unknown>[]>(
+      flyCmd('certs', 'list', '-a', FLY_APP, '--json'),
+    )) ?? []
+
+  if (certs.some((entry) => certHostname(entry) === hostname)) {
+    log(STEP, `certificate for ${hostname} exists`)
+    return
+  }
+
+  log(STEP, `add certificate for ${hostname}`)
+  if (isDryRun()) {
+    log(STEP, '(dry-run: skipped)')
+    return
+  }
+  await run(STEP, flyCmd('certs', 'add', hostname, '-a', FLY_APP))
+}
+
+/** Ensure Fly app and TLS cert exist before secrets or deploy steps. */
+export async function ensureAppReady(): Promise<void> {
+  await ensureApp()
+  await ensureCertificate(WWW_HOST)
 }
 
 /** Build CSS and other assets before deploying the container. */
@@ -42,14 +96,12 @@ export async function setRuntimeSecrets(
   try {
     const content = await readFile(file, 'utf8')
     log(STEP, `${FLYCTL_BIN} secrets import -a ${FLY_APP}`)
-    if (!isDryRun()) {
-      const proc = Bun.spawn([FLYCTL_BIN, 'secrets', 'import', '-a', FLY_APP], {
-        stdin: Buffer.from(content),
-      })
-      const exitCode = await proc.exited
-      if (exitCode !== 0) {
-        throw new Error(`${FLYCTL_BIN} secrets import exited with code ${exitCode}`)
-      }
+    const proc = Bun.spawn([FLYCTL_BIN, 'secrets', 'import', '-a', FLY_APP], {
+      stdin: Buffer.from(content),
+    })
+    const exitCode = await proc.exited
+    if (exitCode !== 0) {
+      throw new Error(`${FLYCTL_BIN} secrets import exited with code ${exitCode}`)
     }
   } finally {
     await rm(dir, { recursive: true, force: true })
@@ -61,10 +113,14 @@ export async function deploy(image: string): Promise<void> {
   await run(STEP, [
     ...flyCmd(
       'deploy',
+      '--config',
+      FLY_CONFIG,
       '--image',
       image,
       '-a',
       FLY_APP,
+      '--primary-region',
+      FLY_REGION,
       '--strategy',
       'immediate',
     ),
